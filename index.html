@@ -28,8 +28,8 @@
     <div class="btnRow center">
       <button class="primary" id="chooseBtn">Choose file</button>
     </div>
-    <div class="hint">Accepts <b>.xlsx</b> / <b>.xls</b> / <b>.csv</b>. Crew "Roster → Download Excel" files are parsed into a daily roster; any other spreadsheet is converted as-is.</div>
-    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.ods">
+    <div class="hint">Accepts <b>.xlsx</b> / <b>.xls</b> / <b>.csv</b>, the Roster Report <b>.pdf</b>, or the roster calendar <b>.ics</b>. Crew roster files become a daily roster; any other spreadsheet is converted as-is.</div>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.ods,.pdf,.ics">
   </div>
 
   <section class="privacy" aria-label="Privacy">
@@ -130,6 +130,7 @@
 
 <footer>Roster Convert · your file never leaves this device</footer>
 
+<script src="importers.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

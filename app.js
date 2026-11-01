@@ -108,6 +108,7 @@ function legend(){ return Object.assign({}, DEFAULT_LEGEND, store.get('legend', 
 function describe(code){
   const L = legend();
   if(L[code]) return L[code];
+  if(S.icsDescriptions && S.icsDescriptions[code]) return titleCase(S.icsDescriptions[code]);
   if(/^DO\d+$/.test(code)) return 'Day Off';
   if(/^S\d?[A-Z]{2,4}$/.test(code) || /^SB/.test(code)) return 'Standby';
   if(/RCNT|RECUR|TRNG|TRAIN|SEP|CRM/i.test(code)) return 'Training / Recurrent';
@@ -693,12 +694,24 @@ async function handleFile(file){
   S.file = file;
   $('status').hidden = false;
   $('fileNameLbl').textContent = file.name;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  S.source = ext === 'pdf' ? 'pdf' : ext === 'ics' ? 'ics' : 'sheet';
+  S.icsDescriptions = {};
   try{
     const buf = await file.arrayBuffer();
-    S.wb = XLSX.read(buf, {type:'array', cellDates:false, cellNF:false});
+    if(S.source === 'pdf'){
+      setBadge('Reading PDF…', true);
+      S.wb = await pdfToWorkbook(buf);
+    } else if(S.source === 'ics'){
+      const r = icsToWorkbook(new TextDecoder('utf-8').decode(buf));
+      S.wb = r.wb; S.icsDescriptions = r.descriptions;
+    } else {
+      S.wb = XLSX.read(buf, {type:'array', cellDates:false, cellNF:false});
+    }
   }catch(err){
+    console.error(err);
     setBadge('Unreadable', false);
-    log('Could not read this file as a spreadsheet: '+err.message, 'err');
+    log('Could not read this file: '+err.message, 'err');
     return;
   }
   // Prefer the first sheet that looks like a crew roster.
@@ -722,8 +735,9 @@ function loadSheet(preferredMode){
   try{
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
-      setBadge('Crew roster', true);
+      setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : 'Crew roster', true);
       log('Parsed '+S.model.stats[0][1]+' days, '+timeLabel(S.model.timeMode, S.model.home).replace('All times', 'times')+'. Check the table, then press Download PDF.', 'ok');
+      if(S.source === 'ics') log('Calendar files don\'t include aircraft, rank, work type or duty codes, and Block Hrs here are the scheduled flight times (credited hours for augmented crew can be lower). Use the Excel export for exact figures.', 'warn');
       S.warnings.forEach(w => log(w, 'warn'));
     } else {
       S.model = buildRawModel(ws, S.sheet);

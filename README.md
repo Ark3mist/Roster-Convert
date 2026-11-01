@@ -1,6 +1,6 @@
 # Roster Convert
 
-Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. Everything runs in the browser, so the file is never uploaded anywhere.
+Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **PDF**, or the roster calendar **`.ics`** file, and download a clean PDF. Everything runs in the browser, so the file is never uploaded anywhere.
 
 ## What it does
 
@@ -14,6 +14,8 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
   - block hours, duty hours, sectors, duty days, and days off at base or away are totalled
   - the crew name and details are taken from the `NAME | ID | FLEET | BASE | RANK` cell at the top of the file
   - the home base is the most common departure station
+- **Roster Report PDF:** the text is read with pdf.js, including rotated pages and wrapped cells, and rebuilt into the same table as the Excel export, so the result is identical.
+- **Roster calendar (.ics):** duty periods ("Report time …"), flights ("MH 020 KUL - CDG") and all-day leave/off events are turned into the same table. Calendar files have no aircraft, rank, work type, duty code or crew name. Block hours are calculated from the scheduled flight times, so augmented sectors show full flight time, not credited hours.
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
 - **Times: Station local, UTC, or Home base.** The crew Roster Report gives every station's times in home-base time (London departures in KUL time, for example). The app converts them:
   - **Station local (LT):** each time in that airport's own local time. Report times use the departure station and debrief times the arrival station.
@@ -52,6 +54,7 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 |---|---|
 | `index.html` | Page layout |
 | `style.css` | Dark theme, plus light styles for printing |
+| `importers.js` | PDF and iCalendar readers that rebuild the Roster Report table |
 | `app.js` | Parsing, rendering, PDF/CSV export |
 | `vendor/fonts/` | DM Mono font (SIL OFL): woff2 for the page, base64 TTF for the PDF |
-| `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2 (bundled here so the app works offline and does not depend on a CDN) |
+| `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2, pdf.js 3.11.174 (loaded only when a PDF is opened) (bundled here so the app works offline and does not depend on a CDN) |
