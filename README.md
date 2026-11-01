@@ -9,6 +9,8 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
   - flights that land after midnight are split onto the arrival day
   - empty days at an outstation between two flights are marked `LO` (layover)
   - day-off and leave codes (`DO`, `AL`, `EL`, `MCH`…) are highlighted, and weekend dates are coloured
+  - duty rows are blue, with a blue line down the left edge; off/leave rows are green; layovers are purple
+  - public-holiday dates are pink. The built-in Malaysia national and KL list for 2026–2027 can be edited in the app
   - block hours, duty hours, sectors, duty days, and days off at base or away are totalled
   - the crew name and details are taken from the `NAME | ID | FLEET | BASE | RANK` cell at the top of the file
   - the home base is the most common departure station

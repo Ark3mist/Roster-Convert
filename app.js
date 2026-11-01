@@ -110,6 +110,39 @@ function describe(code){
 }
 
 /* ------------------------------------------------------------------ *
+ *  Public holidays
+ *  Built-in: Malaysia national + Federal Territory (KL) holidays.
+ *  Fixed-date holidays are exact; lunar/religious ones are the expected
+ *  dates and can shift by a day once officially announced — the list is
+ *  editable in the app (add / remove, saved on this device).
+ * ------------------------------------------------------------------ */
+const BUILTIN_HOLIDAYS = {
+  // 2026
+  '2026-01-01':"New Year's Day", '2026-02-01':'Thaipusam / Federal Territory Day', '2026-02-02':'Replacement holiday',
+  '2026-02-17':'Chinese New Year', '2026-02-18':'Chinese New Year (2nd day)', '2026-03-07':'Nuzul Al-Quran',
+  '2026-03-21':'Hari Raya Aidilfitri', '2026-03-22':'Hari Raya Aidilfitri (2nd day)', '2026-03-23':'Replacement holiday',
+  '2026-05-01':'Labour Day', '2026-05-27':'Hari Raya Haji', '2026-05-31':'Wesak Day',
+  '2026-06-01':"Agong's Birthday", '2026-06-17':'Awal Muharram', '2026-08-25':'Maulidur Rasul',
+  '2026-08-31':'National Day', '2026-09-16':'Malaysia Day', '2026-11-08':'Deepavali', '2026-11-09':'Replacement holiday',
+  '2026-12-25':'Christmas Day',
+  // 2027
+  '2027-01-01':"New Year's Day", '2027-01-22':'Thaipusam', '2027-02-01':'Federal Territory Day',
+  '2027-02-06':'Chinese New Year', '2027-02-07':'Chinese New Year (2nd day)', '2027-02-08':'Replacement holiday',
+  '2027-02-25':'Nuzul Al-Quran', '2027-03-10':'Hari Raya Aidilfitri', '2027-03-11':'Hari Raya Aidilfitri (2nd day)',
+  '2027-05-01':'Labour Day', '2027-05-17':'Hari Raya Haji', '2027-05-20':'Wesak Day',
+  '2027-06-07':"Agong's Birthday", '2027-06-06':'Awal Muharram', '2027-08-15':'Maulidur Rasul',
+  '2027-08-16':'Replacement holiday', '2027-08-31':'National Day', '2027-09-16':'Malaysia Day',
+  '2027-10-28':'Deepavali', '2027-12-25':'Christmas Day',
+};
+function holidays(){
+  const added = store.get('holidays.added', {}), removed = new Set(store.get('holidays.removed', []));
+  const all = Object.assign({}, BUILTIN_HOLIDAYS, added);
+  removed.forEach(k => { if(!(k in added)) delete all[k]; });
+  return all;
+}
+const holidayName = key => key ? holidays()[key] || '' : '';
+
+/* ------------------------------------------------------------------ *
  *  Sheet reading
  * ------------------------------------------------------------------ */
 function sheetMatrices(ws){
@@ -308,13 +341,15 @@ function buildRosterModel(ws){
     const d = days[ymd(c)] || {date: c, rows: []};
     const rs = d.rows.length ? d.rows : [{}];
     const weekend = c.getDay() === 0 || c.getDay() === 6;
+    const isDutyRow = r => !isOffCode(r.item) && r.item !== 'LO' && !!(r.item || r.start || r.dep || r.arr || r.end);
     rs.forEach((r, ri) => {
       const cls = [];
       if(ri === 0) cls.push('daystart'); else cls.push('leg2');
       if(ri === 0 && isOffCode(r.item)) cls.push('off');
       else if(ri === 0 && r.item === 'LO') cls.push('layover');
+      else if(isDutyRow(r)) cls.push('duty');
       if(weekend) cls.push('weekend');
-      out.push({cls, cells: {
+      out.push({cls, ymd: ri === 0 ? ymd(c) : '', cells: {
         date: ri === 0 ? fmtDate(c) : '', dow: ri === 0 ? DOW[c.getDay()] : '',
         start: r.start || '', item: r.item || '', rank: r.rank || '', dep: r.dep || '', arr: r.arr || '',
         end: r.end || '', work: r.work || '', block: r.block || '', duty: r.duty || '', code: r.code || '',
@@ -420,14 +455,16 @@ function renderTable(){
   cols.forEach(c => { const th = document.createElement('th'); th.textContent = c.label; hr.appendChild(th); });
   thead.appendChild(hr);
   const frag = document.createDocumentFragment();
+  const H = holidays();
   m.rows.forEach(r => {
     const tr = document.createElement('tr');
-    if(r.cls.length) tr.className = r.cls.join(' ');
+    const ph = r.ymd && H[r.ymd];
+    tr.className = r.cls.concat(ph ? ['holiday'] : []).join(' ');
     cols.forEach(c => {
       const td = document.createElement('td');
       td.textContent = r.cells[c.key] || '';
       if(c.num) td.className = 'num';
-      if(c.key === 'date') td.className = 'date';
+      if(c.key === 'date'){ td.className = 'date'; if(ph) td.title = ph; }
       tr.appendChild(td);
     });
     frag.appendChild(tr);
@@ -465,6 +502,44 @@ function addLegendRow(code = '', desc = ''){
   row.append(ci, di, del);
   $('legendBody').appendChild(row);
 }
+/** Holidays falling inside the loaded roster's date range. */
+function holidaysInRange(){
+  const keys = S.model.rows.map(r => r.ymd).filter(Boolean);
+  if(!keys.length) return [];
+  const H = holidays(), lo = keys[0], hi = keys[keys.length-1];
+  return Object.keys(H).filter(k => k >= lo && k <= hi).sort().map(k => [k, H[k]]);
+}
+function renderHolidays(){
+  const card = $('holidayCard');
+  if(S.model.kind !== 'roster'){ card.hidden = true; return; }
+  const body = $('holidayBody'); body.innerHTML = '';
+  const list = holidaysInRange();
+  if(!list.length){
+    const p = document.createElement('div'); p.className = 'legendRow empty'; p.textContent = 'No public holidays in this period.'; body.appendChild(p);
+  }
+  list.forEach(([k, name]) => {
+    const row = document.createElement('div'); row.className = 'legendRow';
+    const d = document.createElement('span'); d.className = 'phDate'; d.textContent = fmtDate(new Date(k+'T00:00:00')) + ' ' + DOW[new Date(k+'T00:00:00').getDay()];
+    const n = document.createElement('span'); n.className = 'phName'; n.textContent = name;
+    const del = Object.assign(document.createElement('button'), {className:'ghost', textContent:'✕', title:'Not a holiday — remove'});
+    del.onclick = () => {
+      const added = store.get('holidays.added', {}); delete added[k]; store.set('holidays.added', added);
+      const removed = new Set(store.get('holidays.removed', [])); removed.add(k); store.set('holidays.removed', [...removed]);
+      renderTable(); renderHolidays();
+    };
+    row.append(d, n, del); body.appendChild(row);
+  });
+  card.hidden = false;
+}
+function addHoliday(){
+  const k = $('phDateInput').value, name = $('phNameInput').value.trim() || 'Public Holiday';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(k)){ $('phDateInput').focus(); return; }
+  const added = store.get('holidays.added', {}); added[k] = name; store.set('holidays.added', added);
+  const removed = store.get('holidays.removed', []).filter(x => x !== k); store.set('holidays.removed', removed);
+  $('phNameInput').value = '';
+  renderTable(); renderHolidays();
+}
+
 function legendEntries(){
   return [...document.querySelectorAll('#legendBody .legendRow')]
     .map(r => [r.querySelector('.code').value.trim(), r.querySelector('.desc').value.trim()])
@@ -484,6 +559,7 @@ function render(){
   });
   $('statsCard').hidden = !m.stats.length;
   renderLegend();
+  renderHolidays();
   $('outCard').hidden = false;
   $('toolbar').hidden = false;
 }
@@ -575,8 +651,25 @@ function exportPDF(){
   doc.text(sub, M, 19);
   let y = 19 + sub.length * 3.6 + 1;
 
-  const fills = {off:[236,247,214], layover:[225,240,252]};
-  const texts = {off:[47,74,0], layover:[13,74,122]};
+  const fills = {off:[236,247,214], layover:[237,233,254], duty:[219,234,254]};
+  const texts = {off:[47,74,0], layover:[91,33,182], duty:[30,58,138]};
+  const BLUE = [37,99,235], PINK_BG = [252,231,243], PINK = [190,24,93];
+  const H = holidays();
+
+  if(m.kind === 'roster'){
+    // Colour key
+    const key = [['duty', 'Duty'], ['off', 'Off / Leave'], ['layover', 'Layover'], ['ph', 'Public holiday (date)']];
+    let x = M;
+    doc.setFontSize(7.5);
+    key.forEach(([k, label]) => {
+      doc.setFillColor(...(k === 'ph' ? PINK_BG : fills[k])); doc.rect(x, y - 2.6, 4, 3.2, 'F');
+      if(k === 'duty'){ doc.setFillColor(...BLUE); doc.rect(x, y - 2.6, 0.8, 3.2, 'F'); }
+      if(k === 'ph'){ doc.setFillColor(...PINK); doc.rect(x, y - 2.6, 0.8, 3.2, 'F'); }
+      doc.setTextColor(70); doc.text(label, x + 5.2, y);
+      x += 5.2 + doc.getTextWidth(label) + 6;
+    });
+    y += 3;
+  }
   doc.autoTable({
     startY: y,
     margin: {left: M, right: M, top: 12, bottom: 12},
@@ -589,10 +682,20 @@ function exportPDF(){
     didParseCell: data => {
       if(data.section !== 'body') return;
       const row = m.rows[data.row.index];
-      const k = row.cls.includes('off') ? 'off' : row.cls.includes('layover') ? 'layover' : null;
+      const k = ['off', 'layover', 'duty'].find(c => row.cls.includes(c));
       if(k){ data.cell.styles.fillColor = fills[k]; data.cell.styles.textColor = texts[k]; }
-      if(cols[data.column.index].key === 'date' && row.cls.includes('weekend')) data.cell.styles.textColor = [163,95,0];
+      const isDate = cols[data.column.index].key === 'date';
+      if(isDate && row.cls.includes('weekend')) data.cell.styles.textColor = [163,95,0];
+      if(isDate && row.ymd && H[row.ymd]){ data.cell.styles.fillColor = PINK_BG; data.cell.styles.textColor = PINK; data.cell.styles.fontStyle = 'bold'; }
       if(row.cls.includes('daystart') && data.row.index > 0) data.cell.styles.lineWidth = {top: 0.35, bottom: 0.1, left: 0.1, right: 0.1};
+    },
+    didDrawCell: data => {
+      // Solid blue line down the left edge of every duty row.
+      if(data.section !== 'body' || data.column.index !== 0) return;
+      if(m.rows[data.row.index].cls.includes('duty')){
+        doc.setFillColor(...BLUE);
+        doc.rect(data.cell.x, data.cell.y, 0.9, data.cell.height, 'F');
+      }
     },
   });
   y = doc.lastAutoTable.finalY + 6;
@@ -611,6 +714,9 @@ function exportPDF(){
   };
   smallTable('Statistics', m.stats);
   smallTable('Code Description', legendEntries());
+  if(m.kind === 'roster') smallTable('Public Holidays', holidaysInRange().map(([k, n]) => {
+    const d = new Date(k+'T00:00:00'); return [fmtDate(d)+' '+DOW[d.getDay()], n];
+  }));
 
   const pages = doc.getNumberOfPages();
   const stamp = 'Generated '+fmtDate(new Date())+' with Roster Convert';
@@ -656,6 +762,7 @@ function exportCSV(){
   $('csvBtn').onclick = exportCSV;
   $('columnsBtn').onclick = () => { $('columnsPanel').hidden = !$('columnsPanel').hidden; };
   $('addCodeBtn').onclick = () => addLegendRow();
+  $('addHolidayBtn').onclick = addHoliday;
   ['orientSelect', 'paperSelect'].forEach(id => {
     const el = $(id); el.value = store.get(id, el.value);
     el.onchange = () => store.set(id, el.value);
