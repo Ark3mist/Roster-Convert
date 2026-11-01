@@ -10,11 +10,11 @@
      (no fetch/XHR/beacons, no form posts) and only loads files from this site. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<link rel="stylesheet" href="style.css?v=2026.11.01-13">
-<script src="vendor/xlsx.full.min.js?v=2026.11.01-13"></script>
-<script src="vendor/jspdf.umd.min.js?v=2026.11.01-13"></script>
-<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-13"></script>
-<script src="vendor/fonts/dmmono.js?v=2026.11.01-13"></script>
+<link rel="stylesheet" href="style.css?v=2026.11.01-14">
+<script src="vendor/xlsx.full.min.js?v=2026.11.01-14"></script>
+<script src="vendor/jspdf.umd.min.js?v=2026.11.01-14"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-14"></script>
+<script src="vendor/fonts/dmmono.js?v=2026.11.01-14"></script>
 </head>
 <body>
 <header>
@@ -38,7 +38,7 @@
       <li>Your file is opened and converted <b>inside your own browser</b>, on this device. It is <b>not uploaded, sent, shared or stored</b> on any server, and nobody else, including the owner of this site, can see it.</li>
       <li>The page is <b>locked by your browser</b> so it cannot send data anywhere. It works even with your internet switched off once it has loaded.</li>
       <li>The roster is held in memory only while the page is open. <b>Refreshing or closing the page clears it.</b> The PDF you download is saved only where you choose.</li>
-      <li>Only your <b>settings</b> are remembered in this browser: hidden columns, code descriptions, holiday edits, time mode, page size, and the name you typed for your staff number. <button type="button" class="linkBtn" id="clearSettingsBtn">Clear saved settings</button></li>
+      <li>Only your <b>settings</b> are remembered in this browser: hidden columns, code descriptions, holiday edits, time mode, theme, page size, and the name you typed for your staff number. <button type="button" class="linkBtn" id="clearSettingsBtn">Clear saved settings</button></li>
     </ul>
   </section>
 
@@ -74,6 +74,15 @@
         <option value="local">Station local (LT)</option>
         <option value="utc">UTC</option>
         <option value="base">Home base (KUL, UTC+8)</option>
+      </select>
+    </label>
+    <label class="opt">Theme
+      <select id="themeSelect">
+        <option value="default">Default</option>
+        <option value="bw">Black &amp; White</option>
+        <option value="dark">Dark</option>
+        <option value="minecraft">Minecraft</option>
+        <option value="roblox">Roblox</option>
       </select>
     </label>
     <label class="opt">Page
@@ -138,7 +147,7 @@
 
 <footer>Roster Convert by LipasTerbang · your file never leaves this device · version <span id="appVersion"></span></footer>
 
-<script src="importers.js?v=2026.11.01-13"></script>
-<script src="app.js?v=2026.11.01-13"></script>
+<script src="importers.js?v=2026.11.01-14"></script>
+<script src="app.js?v=2026.11.01-14"></script>
 </body>
 </html>

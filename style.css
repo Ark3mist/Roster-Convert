@@ -1,5 +1,5 @@
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-13) format('woff2')}
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-13) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-14) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-14) format('woff2')}
 :root{
   --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#2a2e33;
   --text:#f2f3f5; --dim:#aeb4bb; --accent:#c6ff3d; --accent-ink:#0b0c0e;
@@ -58,7 +58,7 @@ select{padding:6px 8px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;top:62px;background:var(--bg);z-index:4;padding:8px 0}
 .toolbar .opt{font-size:11.5px;color:var(--dim);display:flex;gap:6px;align-items:center}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:12px 0;overflow:hidden}
+.card{color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:12px 0;overflow:hidden}
 .card h2{margin:0;padding:12px;font-size:13px;font-weight:500;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
 .card h2 small{color:var(--dim);font-size:11px;font-weight:400}
 .titleInput{background:transparent;border:1px dashed transparent;color:var(--text);font-family:var(--mono);font-size:13px;font-weight:500;padding:2px 4px;min-width:0;width:22ch}

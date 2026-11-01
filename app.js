@@ -618,7 +618,9 @@ function buildRawModel(ws, sheetName){
 /* ------------------------------------------------------------------ *
  *  Column visibility
  * ------------------------------------------------------------------ */
-function hiddenCols(){ return new Set(store.get('hidden.'+S.model.kind, [])); }
+// Duty Code starts hidden for new users; once the user ticks/unticks columns, their choice is kept.
+const DEFAULT_HIDDEN = {roster: ['code'], raw: []};
+function hiddenCols(){ const v = store.get('hidden.'+S.model.kind, null); return new Set(v === null ? DEFAULT_HIDDEN[S.model.kind] || [] : v); }
 function visibleColumns(){
   const hid = hiddenCols();
   return S.model.columns.filter(c => !hid.has(c.key) && S.model.rows.some(r => r.cells[c.key]));
@@ -880,11 +882,16 @@ function buildPDF(scale = 1){
   const doc = new jsPDF({orientation: orient, unit: 'mm', format: paper});
   const F = pdfFont(doc);
   const W = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight(), M = 10;
-  const INK = [17,17,17], DIM = [110,116,122];
+  const T = currentTheme();
+  const INK = T.ink, DIM = T.dim;
+  // Page background for dark/tinted themes (painted once per page, before anything else).
+  const painted = new Set();
+  const paintBg = () => { const n = doc.internal.getCurrentPageInfo().pageNumber; if(!T.bg || painted.has(n)) return; painted.add(n); doc.setFillColor(...T.bg); doc.rect(0, 0, W, PH, 'F'); };
+  paintBg();
   // Font colour only — no background highlights anywhere.
-  const texts = {duty:[29,78,216], off:[63,120,0], layover:[109,40,217]};
-  const PINK = [219,39,119], ORANGE = [204,102,0];
-  const HILITE = [255,226,92];          // highlighter yellow behind report times (the only highlight)
+  const texts = {duty: T.duty, off: T.off, layover: T.layover};
+  const PINK = T.ph, ORANGE = T.weekend;
+  const HILITE = T.hilite;              // highlighter behind report times (the only highlight)
   const H = holidays();
   const padX = 1.4 * k, padY = 1.05 * k;
 
@@ -912,7 +919,7 @@ function buildPDF(scale = 1){
     // Report time sample: same highlighter mark as in the table.
     const lbl = 'Report time', lw = doc.getTextWidth(lbl), fh = doc.getFontSize() * 0.3528;
     doc.setFillColor(...HILITE); doc.roundedRect(x - 0.9, y - fh * 0.95, lw + 1.8, fh * 1.3, 0.7, 0.7, 'F');
-    doc.setTextColor(...INK); doc.text(lbl, x, y);
+    doc.setTextColor(...T.hiliteInk); doc.text(lbl, x, y);
     y += 3.2 * k;
   }
 
@@ -924,8 +931,9 @@ function buildPDF(scale = 1){
     theme: 'plain',
     styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize, cellPadding: {top: padY, bottom: padY, left: padX, right: padX},
              textColor: INK, overflow: 'linebreak', valign: 'top', lineWidth: 0},
-    headStyles: {font: F.medium[0], fontStyle: F.medium[1], fillColor: false, textColor: [85,90,96], valign: 'bottom',
-                 lineWidth: {bottom: 0.25}, lineColor: [190,195,200]},
+    headStyles: {font: F.medium[0], fontStyle: F.medium[1], fillColor: false, textColor: T.head, valign: 'bottom',
+                 lineWidth: {bottom: 0.25}, lineColor: T.rule},
+    willDrawPage: paintBg,
     // Short columns never wrap (keeps "KUL 19:00" on one line); only long free text (hotel…) wraps.
     columnStyles: Object.fromEntries(cols.map((c, i) => {
       const long = m.rows.some(r => (r.cells[c.key] || '').length > 14);
@@ -941,7 +949,7 @@ function buildPDF(scale = 1){
       if(key === 'date' && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
       // Report time: bold, black and one size up so it stands out from the blue duty times.
       // Report time: bold black on a highlighter mark (drawn in willDrawCell).
-      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; data.cell.rpt = true; }
+      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = T.hiliteInk; data.cell.rpt = true; }
       if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
       // No lines or fills: a little extra space above each new day keeps days apart.
       if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: padY * 1.8, bottom: padY, left: padX, right: padX};
@@ -981,7 +989,7 @@ function buildPDF(scale = 1){
       doc.text(b.title, x, y + 2.6 * k);
       const valueCol = {font: F.medium[0], fontStyle: F.medium[1], halign: 'right', textColor: INK, cellPadding: {top: 0.35 * k, bottom: 0.35 * k, left: 0, right: 5 * k}};
       doc.autoTable({
-        startY: y + 3.6 * k, margin: {left: x, right: 0, top: 10, bottom: 10}, tableWidth: 'wrap',
+        startY: y + 3.6 * k, margin: {left: x, right: 0, top: 10, bottom: 10}, tableWidth: 'wrap', willDrawPage: paintBg,
         body: b.rows.map(r => r.map(pdfSafe)), theme: 'plain',
         styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize: fs, cellPadding: {top: 0.35 * k, bottom: 0.35 * k, left: 0, right: 2.5 * k},
                  textColor: INK, overflow: 'visible', cellWidth: 'wrap'},
@@ -998,11 +1006,41 @@ function buildPDF(scale = 1){
   const pages = doc.getNumberOfPages();
   for(let p = 1; p <= pages; p++){
     doc.setPage(p);
-    doc.setFont(...F.regular); doc.setFontSize(6); doc.setTextColor(150);
+    doc.setFont(...F.regular); doc.setFontSize(6); doc.setTextColor(...T.footer);
     doc.text('Generated '+fmtDate(new Date())+'  ·  by LipasTerbang', M, PH - 4.5);
     if(pages > 1) doc.text(p+' / '+pages, W - M, PH - 4.5, {align: 'right'});
   }
   return doc;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Colour themes (PDF, print and the on-screen roster)
+ * ------------------------------------------------------------------ */
+const THEMES = {
+  default:   {name: 'Default',         bg: null,           ink: [17,17,17],  dim: [110,116,122], head: [85,90,96],   rule: [190,195,200],
+              duty: [29,78,216],  off: [63,120,0],   layover: [109,40,217], ph: [219,39,119], weekend: [204,102,0],  hilite: [255,226,92], hiliteInk: [17,17,17], footer: [150,150,150]},
+  bw:        {name: 'Black & White',   bg: null,           ink: [0,0,0],     dim: [90,90,90],    head: [60,60,60],   rule: [120,120,120],
+              duty: [0,0,0],      off: [95,95,95],   layover: [0,0,0],      ph: [0,0,0],      weekend: [95,95,95],   hilite: [212,212,212], hiliteInk: [0,0,0], footer: [130,130,130]},
+  dark:      {name: 'Dark',            bg: [17,19,22],     ink: [240,242,245], dim: [160,166,173], head: [160,166,173], rule: [70,75,80],
+              duty: [125,178,255], off: [198,255,61], layover: [196,181,253], ph: [255,140,198], weekend: [255,180,84], hilite: [255,226,92], hiliteInk: [17,17,17], footer: [120,125,130]},
+  minecraft: {name: 'Minecraft',       bg: [244,236,214],  ink: [60,44,30],  dim: [125,105,85],  head: [90,70,50],   rule: [134,96,67],
+              duty: [0,120,120],  off: [76,135,40],  layover: [31,62,158],  ph: [170,0,0],    weekend: [134,96,67],  hilite: [252,219,5], hiliteInk: [40,30,20], footer: [150,130,110]},
+  roblox:    {name: 'Roblox',          bg: null,           ink: [27,42,53],  dim: [99,95,98],    head: [99,95,98],   rule: [163,162,165],
+              duty: [13,105,172], off: [75,151,75],  layover: [107,50,124], ph: [196,40,28],  weekend: [218,133,65], hilite: [245,205,48], hiliteInk: [27,42,53], footer: [163,162,165]},
+};
+const currentTheme = () => THEMES[$('themeSelect') ? $('themeSelect').value : 'default'] || THEMES.default;
+
+/** Mirror the PDF theme on the on-screen roster (default keeps the app's own dark styling). */
+function applyScreenTheme(){
+  const id = $('themeSelect').value, T = THEMES[id] || THEMES.default, area = $('printArea');
+  const vars = ['--panel','--panel2','--text','--dim','--line','--duty-text','--off-text','--lo-text','--ph-text','--warn','--rpt-bg','--rpt-text'];
+  vars.forEach(v => area.style.removeProperty(v));
+  if(id === 'default') return;
+  const rgb = a => 'rgb('+a.join(',')+')';
+  const bg = T.bg || [255,255,255], bg2 = bg.map(c => Math.round(c * 0.94));
+  const set = {'--panel': bg, '--panel2': bg2, '--text': T.ink, '--dim': T.dim, '--line': T.rule, '--duty-text': T.duty, '--off-text': T.off,
+               '--lo-text': T.layover, '--ph-text': T.ph, '--warn': T.weekend, '--rpt-bg': T.hilite, '--rpt-text': T.hiliteInk};
+  Object.entries(set).forEach(([k, v]) => area.style.setProperty(k, rgb(v)));
 }
 
 /** Shrink step by step until the whole roster fits on one page (stops at a still-readable size). */
@@ -1082,6 +1120,10 @@ function exportCSV(){
   $('appVersion').textContent = APP_VERSION;
   $('srcSelect').onchange = () => { if(S.wb && S.mode === 'roster') loadSheet('roster'); };
   $('timeSelect').onchange = e => { store.set('timeSelect', e.target.value); if(S.wb && S.mode === 'roster') loadSheet('roster'); };
+  $('themeSelect').value = store.get('themeSelect', 'default');
+  if(!THEMES[$('themeSelect').value]) $('themeSelect').value = 'default';
+  $('themeSelect').onchange = e => { store.set('themeSelect', e.target.value); applyScreenTheme(); };
+  applyScreenTheme();
   ['orientSelect', 'paperSelect'].forEach(id => {
     const el = $(id); el.value = store.get(id, el.value);
     el.onchange = () => store.set(id, el.value);
