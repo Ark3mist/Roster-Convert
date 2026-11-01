@@ -8,7 +8,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   - the whole roster month is listed (1st to last day), including blank days, even if the export starts later or ends earlier
   - flights that land after midnight are split onto the arrival day
   - empty days at an outstation between two flights are marked `LO` (layover)
-  - day-off and leave codes (`DO`, `AL`, `EL`, `MCH`…) are highlighted, and weekend dates are coloured
+  - day-off and leave codes (`DO`, `DO1`, `D`, `AL`, `MC1`…) are highlighted and shown as the code only, without the 00:00–23:59 times. The station is shown only when the day off is away from base. Weekend dates are coloured.
   - colour is used for the text only, with no background highlights: duty is blue, off/leave green, layover purple, weekend dates orange
   - public-holiday dates are pink. The built-in Malaysia national and KL list for 2026–2027 can be edited in the app
   - block hours, duty hours, sectors, duty days, and days off at base or away are totalled

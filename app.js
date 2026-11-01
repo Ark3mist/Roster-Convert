@@ -388,6 +388,12 @@ const ROSTER_COLUMNS = [
   {key:'ac',    label:'A/C'},
 ];
 
+/** Day off / leave: just the code. Times (00:00–23:59) are noise; the station is kept only when away from base. */
+function offCells(r, home){
+  const stn = String(r.dep || '').split(' ')[0];
+  return {start: '', dep: stn && home && stn !== home ? stn : '', arr: '', end: '', duty: '', block: ''};
+}
+
 function buildRosterModel(ws){
   const parsed = parseRosterRows(ws);
   const {rows, meta} = parsed;
@@ -490,13 +496,13 @@ function buildRosterModel(ws){
       else if(isDutyRow(r)) cls.push('duty');
       if(weekend) cls.push('weekend');
       if(r.earlyRpt) cls.push('earlyrpt');
-      out.push({cls, ymd: ri === 0 ? ymd(c) : '', cells: {
+      out.push({cls, ymd: ri === 0 ? ymd(c) : '', cells: Object.assign({
         date: ri === 0 ? fmtDate(c) : '', dow: ri === 0 ? DOW[c.getDay()] : '',
-        // "RPT" prefix on every real report time (not on off/leave rows, where 00:00 means nothing).
-        start: r.start ? (isOffCode(r.item) ? r.start : 'RPT '+r.start) : '', item: r.item || '', rank: r.rank || '', dep: r.dep || '', arr: r.arr || '',
+        // "RPT" prefix on every real report time.
+        start: r.start ? 'RPT '+r.start : '', item: r.item || '', rank: r.rank || '', dep: r.dep || '', arr: r.arr || '',
         end: r.end || '', work: r.work || '', block: r.block || '', duty: r.duty || '', code: r.code || '',
         ac: r.ac || '', hotel: r.hotel || '',
-      }});
+      }, isOffCode(r.item) ? offCells(r, home) : {})});
       blockMin += durToMin(r.block); dutyMin += durToMin(r.duty);
       if(r.block) sectors++;
       if(r.item) codes.add(r.item);
