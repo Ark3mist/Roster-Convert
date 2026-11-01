@@ -418,11 +418,11 @@ const ROSTER_COLUMNS = [
   {key:'dep',   label:'Dep / Start'},
   {key:'arr',   label:'Arr / End'},
   {key:'end',   label:'Duty End'},
-  {key:'work',  label:'Work Type'},
-  {key:'block', label:'Block Hrs', num:true},
-  {key:'duty',  label:'Duty Hrs',  num:true},
-  {key:'code',  label:'Duty Code'},
-  {key:'ac',    label:'A/C'},
+  {key:'work',  label:'Work Type', center:true},
+  {key:'block', label:'Block Hrs', center:true},
+  {key:'duty',  label:'Duty Hrs',  center:true},
+  {key:'code',  label:'Duty Code', center:true},
+  {key:'ac',    label:'A/C',       center:true},
 ];
 
 /** Day off / leave: just the code. Times (00:00–23:59) are noise; the station is kept only when away from base. */
@@ -652,7 +652,7 @@ function renderTable(){
   const thead = $('outHead'), tbody = $('outBody');
   thead.innerHTML = ''; tbody.innerHTML = '';
   const hr = document.createElement('tr');
-  cols.forEach(c => { const th = document.createElement('th'); th.textContent = c.label; hr.appendChild(th); });
+  cols.forEach(c => { const th = document.createElement('th'); th.textContent = c.label; if(c.center) th.className = 'center'; hr.appendChild(th); });
   thead.appendChild(hr);
   const frag = document.createDocumentFragment();
   const H = holidays();
@@ -664,6 +664,7 @@ function renderTable(){
       const td = document.createElement('td');
       td.textContent = r.cells[c.key] || '';
       if(c.num) td.className = 'num';
+      if(c.center) td.className = 'center';
       if(c.key === 'date'){ td.className = 'date'; if(ph) td.title = ph; }
       if(c.key === 'start' && !r.cls.includes('off')){
         td.className = 'start';
@@ -926,6 +927,7 @@ function buildPDF(scale = 1){
   doc.autoTable({
     startY: y,
     margin: {left: M, right: M, top: 10, bottom: 10},
+    tableWidth: 'wrap',                     // compact: columns only as wide as their content
     head: [cols.map(c => pdfSafe(c.label))],
     body: m.rows.map(r => cols.map(c => pdfSafe(r.cells[c.key]))),
     theme: 'plain',
@@ -937,9 +939,10 @@ function buildPDF(scale = 1){
     // Short columns never wrap (keeps "KUL 19:00" on one line); only long free text (hotel…) wraps.
     columnStyles: Object.fromEntries(cols.map((c, i) => {
       const long = m.rows.some(r => (r.cells[c.key] || '').length > 14);
-      return [i, Object.assign({cellWidth: long ? 'auto' : 'wrap'}, c.num ? {halign:'right'} : {})];
+      return [i, Object.assign({cellWidth: long ? 'auto' : 'wrap'}, c.center ? {halign:'center'} : c.num ? {halign:'right'} : {})];
     })),
     didParseCell: data => {
+      if(data.section === 'head' && cols[data.column.index].center) data.cell.styles.halign = 'center';
       if(data.section !== 'body') return;
       const row = m.rows[data.row.index], st = data.cell.styles;
       const c = ['off', 'layover', 'duty'].find(x => row.cls.includes(x));

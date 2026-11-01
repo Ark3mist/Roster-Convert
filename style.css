@@ -1,5 +1,5 @@
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-14) format('woff2')}
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-14) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-15) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-15) format('woff2')}
 :root{
   --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#2a2e33;
   --text:#f2f3f5; --dim:#aeb4bb; --accent:#c6ff3d; --accent-ink:#0b0c0e;
@@ -69,6 +69,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
 th{background:var(--panel2);color:var(--dim);font-weight:500;font-size:11px;position:sticky;top:0}
 td.num{text-align:right}
+th.center,td.center{text-align:center}
 td.date{color:var(--dim)}
 tr.off td{color:var(--off-text)}
 tr.layover td{color:var(--lo-text)}
