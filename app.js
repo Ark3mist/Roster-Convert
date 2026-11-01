@@ -900,7 +900,9 @@ function buildPDF(scale = 1){
   // Font colour only — no background highlights anywhere.
   const texts = {duty: T.duty, off: T.off, layover: T.layover};
   const PINK = T.ph, ORANGE = T.weekend;
-  const HILITE = T.hilite;              // highlighter behind report times (the only highlight)
+  const HILITE = T.hilite;
+  const pageBg = T.bg || [255,255,255];
+  const ROW_LINE = T.rule.map((c, i) => Math.round(c * 0.45 + pageBg[i] * 0.55));   // faint hairline colour              // highlighter behind report times (the only highlight)
   const H = holidays();
   const padX = 1.4 * k, padY = 1.05 * k;
 
@@ -967,8 +969,8 @@ function buildPDF(scale = 1){
       // Report time: bold black on a highlighter mark (drawn in willDrawCell).
       if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = T.hiliteInk; data.cell.rpt = true; }
       if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
-      // No lines or fills: a little extra space above each new day keeps days apart.
-      if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: padY * 1.8, bottom: padY, left: padX, right: padX};
+      // A very thin line under every row (soft tone of the theme's rule colour).
+      st.lineWidth = {top: 0, right: 0, left: 0, bottom: 0.1}; st.lineColor = ROW_LINE;
     },
     willDrawCell: data => {
       if(data.section !== 'body' || !data.cell.rpt) return;
