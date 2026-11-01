@@ -902,6 +902,7 @@ function buildPDF(scale = 1){
   const PINK = T.ph, ORANGE = T.weekend;
   const HILITE = T.hilite;
   const pageBg = T.bg || [255,255,255];
+  const rowLines = $('rowLinesChk').checked;
   const ROW_LINE = T.rule.map((c, i) => Math.round(c * 0.45 + pageBg[i] * 0.55));   // faint hairline colour              // highlighter behind report times (the only highlight)
   const H = holidays();
   const padX = 1.4 * k, padY = 1.05 * k;
@@ -969,8 +970,13 @@ function buildPDF(scale = 1){
       // Report time: bold black on a highlighter mark (drawn in willDrawCell).
       if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = T.hiliteInk; data.cell.rpt = true; }
       if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
-      // A very thin line under every row (soft tone of the theme's rule colour).
-      st.lineWidth = {top: 0, right: 0, left: 0, bottom: 0.1}; st.lineColor = ROW_LINE;
+      if(rowLines){
+        // A very thin line under every row (soft tone of the theme's rule colour).
+        st.lineWidth = {top: 0, right: 0, left: 0, bottom: 0.1}; st.lineColor = ROW_LINE;
+      } else if(row.cls.includes('daystart') && data.row.index > 0){
+        // No lines: a little extra space above each new day keeps days apart.
+        st.cellPadding = {top: padY * 1.8, bottom: padY, left: padX, right: padX};
+      }
     },
     willDrawCell: data => {
       if(data.section !== 'body' || !data.cell.rpt) return;
@@ -1209,6 +1215,11 @@ function exportCSV(){
   if(!THEMES[$('themeSelect').value]) $('themeSelect').value = 'default';
   $('themeSelect').onchange = e => { store.set('themeSelect', e.target.value); applyScreenTheme(); };
   applyScreenTheme();
+  // Row lines option (on by default), remembered on this device; mirrored on screen.
+  $('rowLinesChk').checked = store.get('rowLines', true);
+  const syncRowLines = () => $('outTable').classList.toggle('noLines', !$('rowLinesChk').checked);
+  $('rowLinesChk').onchange = () => { store.set('rowLines', $('rowLinesChk').checked); syncRowLines(); };
+  syncRowLines();
   ['orientSelect', 'paperSelect'].forEach(id => {
     const el = $(id); el.value = store.get(id, el.value);
     el.onchange = () => store.set(id, el.value);

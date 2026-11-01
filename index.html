@@ -10,11 +10,11 @@
      (no fetch/XHR/beacons, no form posts) and only loads files from this site. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<link rel="stylesheet" href="style.css?v=2026.11.01-20">
-<script src="vendor/xlsx.full.min.js?v=2026.11.01-20"></script>
-<script src="vendor/jspdf.umd.min.js?v=2026.11.01-20"></script>
-<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-20"></script>
-<script src="vendor/fonts/dmmono.js?v=2026.11.01-20"></script>
+<link rel="stylesheet" href="style.css?v=2026.11.01-21">
+<script src="vendor/xlsx.full.min.js?v=2026.11.01-21"></script>
+<script src="vendor/jspdf.umd.min.js?v=2026.11.01-21"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-21"></script>
+<script src="vendor/fonts/dmmono.js?v=2026.11.01-21"></script>
 </head>
 <body>
 <header>
@@ -100,6 +100,7 @@
         <option value="letter">Letter</option>
       </select>
     </label>
+    <label class="opt chk"><input type="checkbox" id="rowLinesChk" checked> Row lines</label>
     <button id="printBtn">Print</button>
     <button id="csvBtn">CSV</button>
     <button id="columnsBtn">Columns</button>
@@ -150,7 +151,7 @@
 
 <footer>Roster Convert by LipasTerbang · your file never leaves this device · version <span id="appVersion"></span></footer>
 
-<script src="importers.js?v=2026.11.01-20"></script>
-<script src="app.js?v=2026.11.01-20"></script>
+<script src="importers.js?v=2026.11.01-21"></script>
+<script src="app.js?v=2026.11.01-21"></script>
 </body>
 </html>
