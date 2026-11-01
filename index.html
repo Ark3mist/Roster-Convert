@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b0c0e">
+<title>Roster Convert</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>ROSTER <span>CONVERT</span></h1>
+  <div class="sub">xls / xlsx roster → clean daily roster → PDF · runs fully in your browser, nothing is uploaded</div>
+</header>
+
+<main>
+  <div id="drop" tabindex="0">
+    <div>Drop your roster file here, or</div>
+    <div class="btnRow center">
+      <button class="primary" id="chooseBtn">Choose file</button>
+    </div>
+    <div class="hint">Accepts <b>.xlsx</b> / <b>.xls</b> / <b>.csv</b>. Crew "Roster → Download Excel" files are parsed into a daily roster; any other spreadsheet is converted as-is.</div>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.ods">
+  </div>
+
+  <div id="status" hidden>
+    Detected: <span id="fmtBadge" class="badge"></span>
+    <span id="fileNameLbl"></span>
+    <span id="sheetPick" hidden>
+      · sheet <select id="sheetSelect"></select>
+    </span>
+    <span id="modePick" hidden>
+      · view as
+      <select id="modeSelect">
+        <option value="roster">Daily roster</option>
+        <option value="raw">Raw sheet</option>
+      </select>
+    </span>
+  </div>
+
+  <div id="log"></div>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <button class="primary" id="pdfBtn">⬇ Download PDF</button>
+    <label class="opt">Page
+      <select id="orientSelect">
+        <option value="auto">Auto</option>
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+      </select>
+    </label>
+    <label class="opt">Size
+      <select id="paperSelect">
+        <option value="a4">A4</option>
+        <option value="letter">Letter</option>
+      </select>
+    </label>
+    <button id="printBtn">Print</button>
+    <button id="csvBtn">CSV</button>
+    <button id="columnsBtn">Columns</button>
+  </div>
+
+  <div id="columnsPanel" class="card" hidden>
+    <h2>Columns <small>untick to hide on screen and in the PDF — remembered on this device</small></h2>
+    <div id="columnsList" class="colList"></div>
+  </div>
+
+  <div id="printArea">
+    <section class="card" id="outCard" hidden>
+      <h2>
+        <input id="titleInput" class="titleInput" value="Daily Roster" aria-label="Roster title">
+        <small id="rangeLbl"></small>
+      </h2>
+      <div class="tableWrap">
+        <table id="outTable">
+          <thead id="outHead"></thead>
+          <tbody id="outBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="statsCard" hidden>
+      <h2>Statistics</h2>
+      <div class="stats" id="statsBody"></div>
+    </section>
+
+    <section class="card" id="legendCard" hidden>
+      <h2>Code Description <small>edit descriptions — saved on this device and printed in the PDF</small></h2>
+      <div id="legendBody"></div>
+      <div class="btnRow pad"><button id="addCodeBtn">+ add code</button></div>
+    </section>
+  </div>
+</main>
+
+<footer>Roster Convert · your file never leaves this device</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
