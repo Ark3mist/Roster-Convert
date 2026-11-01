@@ -15,6 +15,7 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
   - the crew name and details are taken from the `NAME | ID | FLEET | BASE | RANK` cell at the top of the file
   - the home base is the most common departure station
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
+- **Times: Local (LT) or UTC**. Times are converted per station using each airport's time zone, including daylight saving, and duties move to their UTC date. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
 - Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**.
 - Columns can be hidden. The code legend can be edited. Both are remembered on your device.
 

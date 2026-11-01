@@ -12,6 +12,7 @@ const S = {
   mode: 'roster',      // 'roster' | 'raw'
   rosterOK: false,     // active sheet looks like a crew roster export
   model: null,         // {kind, title, subtitle, columns, rows, stats, codes}
+  warnings: [],
 };
 
 const $ = id => document.getElementById(id);
@@ -143,6 +144,83 @@ function holidays(){
 const holidayName = key => key ? holidays()[key] || '' : '';
 
 /* ------------------------------------------------------------------ *
+ *  Time zones (Local ⇄ UTC)
+ *  Station → IANA zone; offsets (incl. daylight saving) come from the
+ *  browser's own tz database for the actual date, so they stay correct.
+ * ------------------------------------------------------------------ */
+const STATION_TZ = (() => {
+  const z = {}, put = (zone, list) => list.split(' ').forEach(c => { z[c] = zone; });
+  put('Asia/Kuala_Lumpur', 'KUL SZB PEN LGK KBR KUA TGG IPH AOR JHB MKZ TOD RDN SZB');
+  put('Asia/Kuching', 'BKI KCH MYY SBW TWU SDK LBU MZV LDU MKM BTU LMN LWY BBN TMG GSA KUD');
+  put('Asia/Singapore', 'SIN XSP');
+  put('Asia/Brunei', 'BWN');
+  put('Asia/Jakarta', 'CGK HLP KNO PDG PKU BTH PLM BDO SRG JOG YIA SOC SUB TNJ PNK DJB BTJ');
+  put('Asia/Makassar', 'DPS UPG BPN LOP MDC BDJ KOE');
+  put('Asia/Jayapura', 'DJJ');
+  put('Asia/Bangkok', 'BKK DMK HKT CNX KBV USM HDY CEI UTH');
+  put('Asia/Ho_Chi_Minh', 'SGN HAN DAD PQC CXR HPH VCA');
+  put('Asia/Phnom_Penh', 'PNH REP KTI KOS');
+  put('Asia/Vientiane', 'VTE LPQ');
+  put('Asia/Yangon', 'RGN MDL');
+  put('Asia/Manila', 'MNL CEB CRK DVO ILO KLO PPS');
+  put('Asia/Hong_Kong', 'HKG'); put('Asia/Macau', 'MFM'); put('Asia/Taipei', 'TPE KHH TSA');
+  put('Asia/Shanghai', 'PEK PKX PVG SHA CAN SZX XMN KMG CTU TFU CSX HGH NKG WUH CKG XIY TAO FOC NNG HAK SYX');
+  put('Asia/Seoul', 'ICN GMP PUS CJU');
+  put('Asia/Tokyo', 'NRT HND KIX ITM NGO FUK CTS OKA');
+  put('Asia/Kolkata', 'DEL BOM MAA BLR HYD COK TRV TRZ AMD CCU GOI GOX ATQ IXE CJB');
+  put('Asia/Colombo', 'CMB'); put('Indian/Maldives', 'MLE'); put('Asia/Dhaka', 'DAC CGP');
+  put('Asia/Kathmandu', 'KTM'); put('Asia/Karachi', 'KHI LHE ISB');
+  put('Asia/Dubai', 'DXB AUH SHJ'); put('Asia/Qatar', 'DOH'); put('Asia/Riyadh', 'JED MED RUH DMM');
+  put('Asia/Muscat', 'MCT'); put('Asia/Bahrain', 'BAH'); put('Asia/Kuwait', 'KWI'); put('Asia/Tehran', 'IKA');
+  put('Europe/Istanbul', 'IST SAW'); put('Europe/London', 'LHR LGW MAN'); put('Europe/Paris', 'CDG ORY');
+  put('Europe/Amsterdam', 'AMS'); put('Europe/Berlin', 'FRA MUC'); put('Europe/Rome', 'FCO');
+  put('Europe/Zurich', 'ZRH'); put('Europe/Madrid', 'MAD');
+  put('Australia/Sydney', 'SYD'); put('Australia/Melbourne', 'MEL'); put('Australia/Brisbane', 'BNE OOL');
+  put('Australia/Perth', 'PER'); put('Australia/Adelaide', 'ADL'); put('Australia/Darwin', 'DRW');
+  put('Pacific/Auckland', 'AKL CHC');
+  put('Africa/Johannesburg', 'JNB'); put('Africa/Nairobi', 'NBO'); put('America/Los_Angeles', 'LAX SFO');
+  return z;
+})();
+
+const tzFmtCache = {};
+/** Offset (minutes east of UTC) of `zone` at the instant `utcMs`. */
+function tzOffset(zone, utcMs){
+  const f = tzFmtCache[zone] ||= new Intl.DateTimeFormat('en-US', {timeZone: zone, hourCycle: 'h23',
+    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'});
+  const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x => [x.type, x.value]));
+  return Math.round((Date.UTC(+p.year, p.month-1, +p.day, +p.hour % 24, +p.minute) - utcMs) / 60000);
+}
+
+/** Shift a (date, "HH:MM") pair between a station's local time and UTC. dir = +1 local→UTC, −1 UTC→local. */
+function shiftTime(date, time, zone, dir){
+  const m = /^(\d{2}):(\d{2})$/.exec(time || '');
+  if(!date || !m || !zone) return [date, time];
+  const wall = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), +m[1], +m[2]);
+  let out;
+  if(dir > 0){ let off = tzOffset(zone, wall); off = tzOffset(zone, wall - off*60000); out = wall - off*60000; }
+  else out = wall + tzOffset(zone, wall)*60000;
+  const d = new Date(out);
+  return [new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+          String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')];
+}
+
+/** Convert every leg's times from `from` ('local'|'utc') to `to`. Off/leave days are left on their date. */
+function convertLegs(legs, from, to, home){
+  if(from === to) return [];
+  const dir = to === 'utc' ? 1 : -1, unknown = new Set();
+  const zoneOf = stn => { const z = STATION_TZ[(stn || '').toUpperCase()]; if(stn && !z && /^[A-Z]{3}$/.test(stn)) unknown.add(stn); return z || STATION_TZ[home] || null; };
+  for(const l of legs){
+    if(isOffCode(l.item)) continue;
+    const depZ = zoneOf(l.depStn), arrZ = zoneOf(l.arrStn || l.depStn);
+    [l.depDate, l.depTime] = shiftTime(l.depDate, l.depTime, depZ, dir);
+    [l.arrDate, l.arrTime] = shiftTime(l.arrDate, l.arrTime, arrZ, dir);
+    if(l.repTime) [l.repDate, l.repTime] = shiftTime(l.repDate, l.repTime, depZ, dir);   // report at departure station
+    if(l.debTime) [l.debDate, l.debTime] = shiftTime(l.debDate, l.debTime, arrZ, dir);   // debrief at arrival station
+  }
+  return [...unknown];
+}
+
+/* ------------------------------------------------------------------ *
  *  Sheet reading
  * ------------------------------------------------------------------ */
 function sheetMatrices(ws){
@@ -218,7 +296,10 @@ function parseRosterRows(ws){
     });
   }
   if(!rows.length) throw new Error('Roster header found, but no data rows below it.');
-  return {rows, meta: findCrewMeta(text, h)};
+  // Which clock the export uses: "(LT)" / no marker = local, "UTC" / "GMT" / "(Z)" = UTC.
+  const depHead = idx.dep >= 0 ? String(text[h][idx.dep]) : '';
+  const srcTime = /\b(UTC|GMT)\b|\(Z\)/i.test(depHead) ? 'utc' : 'local';
+  return {rows, meta: findCrewMeta(text, h), srcTime};
 }
 
 function rowsToLegs(rows){
@@ -271,9 +352,12 @@ const ROSTER_COLUMNS = [
 ];
 
 function buildRosterModel(ws){
-  const {rows, meta} = parseRosterRows(ws);
+  const {rows, meta, srcTime} = parseRosterRows(ws);
   const legs = rowsToLegs(rows);
   const home = guessHome(legs, meta);
+  const timeMode = $('timeSelect').value;
+  const unknownStations = convertLegs(legs, srcTime, timeMode, home);
+  if(unknownStations.length) S.warnings.push('No time zone known for '+unknownStations.join(', ')+' — times there were converted using the home base ('+home+') zone. Tell the developer to add them.');
   const days = {};
   const dayOf = d => (days[ymd(d)] ||= {date: d, rows: []});
   const rel = (time, date, rowDate) => {             // show "(+1)" when time falls on a later day than its row
@@ -384,7 +468,8 @@ function buildRosterModel(ws){
   return {
     kind: 'roster',
     title: meta ? meta.name : 'Daily Roster',
-    subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD)].filter(Boolean).join(' · '),
+    subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD), timeMode === 'utc' ? 'All times UTC' : 'All times local (LT)'].filter(Boolean).join(' · '),
+    timeMode,
     columns: ROSTER_COLUMNS,
     rows: out,
     stats: [
@@ -607,11 +692,14 @@ function loadSheet(preferredMode){
   S.mode = preferredMode || (S.rosterOK ? 'roster' : 'raw');
   $('modePick').hidden = !S.rosterOK;
   $('modeSelect').value = S.mode;
+  $('timePick').hidden = S.mode !== 'roster';
+  S.warnings = [];
   try{
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
       setBadge('Crew roster', true);
-      log('Parsed '+S.model.stats[0][1]+' days. Check the table, then press Download PDF.', 'ok');
+      log('Parsed '+S.model.stats[0][1]+' days, '+(S.model.timeMode === 'utc' ? 'times in UTC' : 'times local')+'. Check the table, then press Download PDF.', 'ok');
+      S.warnings.forEach(w => log(w, 'warn'));
     } else {
       S.model = buildRawModel(ws, S.sheet);
       setBadge(S.rosterOK ? 'Raw sheet' : 'Spreadsheet (as-is)', true);
@@ -683,7 +771,8 @@ function exportPDF(){
   y += 5.5;
 
   if(m.kind === 'roster'){
-    const key = [[texts.duty, 'Duty'], [texts.off, 'Off / Leave'], [texts.layover, 'Layover'], [PINK, 'Public holiday'], [ORANGE, 'Weekend']];
+    const key = [[texts.duty, 'Duty'], [texts.off, 'Off / Leave'], [texts.layover, 'Layover'], [PINK, 'Public holiday'], [ORANGE, 'Weekend'],
+                 [INK, m.timeMode === 'utc' ? 'Times: UTC' : 'Times: Local']];
     let x = M;
     doc.setFont(...F.regular); doc.setFontSize(6.8);
     key.forEach(([color, label]) => {
@@ -799,6 +888,8 @@ function exportCSV(){
   $('columnsBtn').onclick = () => { $('columnsPanel').hidden = !$('columnsPanel').hidden; };
   $('addCodeBtn').onclick = () => addLegendRow();
   $('addHolidayBtn').onclick = addHoliday;
+  $('timeSelect').value = store.get('timeSelect', 'local');
+  $('timeSelect').onchange = e => { store.set('timeSelect', e.target.value); if(S.wb && S.mode === 'roster') loadSheet('roster'); };
   ['orientSelect', 'paperSelect'].forEach(id => {
     const el = $(id); el.value = store.get(id, el.value);
     el.onchange = () => store.set(id, el.value);
