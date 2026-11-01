@@ -364,7 +364,6 @@ const ROSTER_COLUMNS = [
   {key:'duty',  label:'Duty Hrs',  num:true},
   {key:'code',  label:'Duty Code'},
   {key:'ac',    label:'A/C'},
-  {key:'hotel', label:'Hotel'},
 ];
 
 function buildRosterModel(ws){
