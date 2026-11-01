@@ -1,6 +1,6 @@
 # Roster Convert
 
-Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **PDF**, or the roster calendar **`.ics`** file, and download a clean PDF. Everything runs in the browser, so the file is never uploaded anywhere.
+Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **PDF** or saved web page (**`.html`**), or the roster calendar **`.ics`** file, and download a clean PDF. Everything runs in the browser, so the file is never uploaded anywhere.
 
 ## What it does
 
@@ -15,6 +15,8 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   - the crew name and details are taken from the `NAME | ID | FLEET | BASE | RANK` cell at the top of the file
   - the home base is the most common departure station
 - **Roster Report PDF:** the text is read with pdf.js, including rotated pages and wrapped cells, and rebuilt into the same table as the Excel export, so the result is identical.
+- **Roster Report web page (.html)**, saved from the crew portal: the table is read as plain data (no scripts run), with colspan/rowspan and multi-page tables handled.
+- **UTC exports are detected automatically.** Some versions (such as the portal's web page) give times in UTC without saying so. Days off then run 16:00–15:59 instead of 00:00–23:59 (for KUL), and the app converts the times accordingly. Days off are always shown as home-base calendar days.
 - **Roster calendar (.ics):** duty periods ("Report time …"), flights ("MH 020 KUL - CDG") and all-day leave/off events are turned into the same table. Calendar files have no aircraft, rank, work type, duty code or crew name. Block hours are calculated from the scheduled flight times, so augmented sectors show full flight time, not credited hours.
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
 - **Times: Station local, UTC, or Home base.** The crew Roster Report gives every station's times in home-base time (London departures in KUL time, for example). The app converts them:
@@ -54,7 +56,7 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 |---|---|
 | `index.html` | Page layout |
 | `style.css` | Dark theme, plus light styles for printing |
-| `importers.js` | PDF and iCalendar readers that rebuild the Roster Report table |
+| `importers.js` | PDF, saved web page (HTML) and iCalendar readers that rebuild the Roster Report table |
 | `app.js` | Parsing, rendering, PDF/CSV export |
 | `vendor/fonts/` | DM Mono font (SIL OFL): woff2 for the page, base64 TTF for the PDF |
 | `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2, pdf.js 3.11.174 (loaded only when a PDF is opened) (bundled here so the app works offline and does not depend on a CDN) |

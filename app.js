@@ -217,20 +217,41 @@ function shiftTime(date, time, fromZ, toZ){
  * Off/leave days are left on their date.
  */
 function convertLegs(legs, from, to, home){
-  if(from === to) return [];
   const unknown = new Set();
   const baseZ = STATION_TZ[home] || 'Asia/Kuala_Lumpur';
   const stnZ = stn => { const z = STATION_TZ[(stn || '').toUpperCase()]; if(stn && !z && /^[A-Z]{3}$/.test(stn)) unknown.add(stn); return z || baseZ; };
   const clock = (mode, stationZone) => mode === 'utc' ? 'UTC' : mode === 'base' ? baseZ : stationZone;
   for(const l of legs){
-    if(isOffCode(l.item)) continue;
+    // Days off / leave are calendar days at home base, whatever clock is chosen for duties.
+    const target = isOffCode(l.item) ? 'base' : to;
+    if(from === target) continue;
     const depZ = stnZ(l.depStn), arrZ = stnZ(l.arrStn || l.depStn);
-    [l.depDate, l.depTime] = shiftTime(l.depDate, l.depTime, clock(from, depZ), clock(to, depZ));
-    [l.arrDate, l.arrTime] = shiftTime(l.arrDate, l.arrTime, clock(from, arrZ), clock(to, arrZ));
-    if(l.repTime) [l.repDate, l.repTime] = shiftTime(l.repDate, l.repTime, clock(from, depZ), clock(to, depZ));
-    if(l.debTime) [l.debDate, l.debTime] = shiftTime(l.debDate, l.debTime, clock(from, arrZ), clock(to, arrZ));
+    [l.depDate, l.depTime] = shiftTime(l.depDate, l.depTime, clock(from, depZ), clock(target, depZ));
+    [l.arrDate, l.arrTime] = shiftTime(l.arrDate, l.arrTime, clock(from, arrZ), clock(target, arrZ));
+    if(l.repTime) [l.repDate, l.repTime] = shiftTime(l.repDate, l.repTime, clock(from, depZ), clock(target, depZ));
+    if(l.debTime) [l.debDate, l.debTime] = shiftTime(l.debDate, l.debTime, clock(from, arrZ), clock(target, arrZ));
   }
   return [...unknown];
+}
+/** UTC wall-clock of home-base midnight (start) or 23:59 (end) around the roster's dates, e.g. KUL → "16:00". */
+function utcMidnightOf(home, legs, end){
+  const z = STATION_TZ[home] || 'Asia/Kuala_Lumpur';
+  const d = (legs.find(l => l.depDate) || {}).depDate || new Date();
+  const [, t] = shiftTime(d, end ? '23:59' : '00:00', z, 'UTC');
+  return t;
+}
+/**
+ * Some Roster Report exports (e.g. the portal's HTML) give times in UTC without saying so.
+ * Tell-tale: days off run 00:00–23:59 home-base time, so in a UTC export they start at
+ * home-base midnight in UTC (16:00 for KUL) instead of 00:00.
+ */
+function detectUtcExport(legs, home){
+  const offs = legs.filter(l => isOffCode(l.item) && l.depTime);
+  if(!offs.length) return 'base';
+  const utcStart = utcMidnightOf(home, legs);
+  if(utcStart === '00:00') return 'base';
+  const utcLike = offs.filter(l => l.depTime === utcStart).length;
+  return utcLike > offs.length / 2 ? 'utc' : 'base';
 }
 const TIME_LABEL = {local: 'All times station local (LT)', utc: 'All times UTC', base: home => 'All times '+(home || 'home base')+' (as exported)'};
 const timeLabel = (mode, home) => mode === 'base' ? TIME_LABEL.base(home) : TIME_LABEL[mode];
@@ -368,9 +389,12 @@ const ROSTER_COLUMNS = [
 ];
 
 function buildRosterModel(ws){
-  const {rows, meta, srcTime} = parseRosterRows(ws);
+  const parsed = parseRosterRows(ws);
+  const {rows, meta} = parsed;
   const legs = rowsToLegs(rows);
   const home = guessHome(legs, meta);
+  const srcTime = parsed.srcTime === 'base' ? detectUtcExport(legs, home) : parsed.srcTime;
+  if(srcTime === 'utc' && parsed.srcTime !== 'utc') S.warnings.push('This file\'s times are in UTC (detected from the days off running '+utcMidnightOf(home, legs)+'–'+utcMidnightOf(home, legs, true)+' instead of 00:00–23:59). They have been converted accordingly.');
   const timeMode = $('timeSelect').value;
   const unknownStations = convertLegs(legs, srcTime, timeMode, home);
   if(unknownStations.length) S.warnings.push('No time zone known for '+unknownStations.join(', ')+' — times there were converted using the home base ('+home+') zone. Tell the developer to add them.');
@@ -695,13 +719,15 @@ async function handleFile(file){
   $('status').hidden = false;
   $('fileNameLbl').textContent = file.name;
   const ext = (file.name.split('.').pop() || '').toLowerCase();
-  S.source = ext === 'pdf' ? 'pdf' : ext === 'ics' ? 'ics' : 'sheet';
+  S.source = ext === 'pdf' ? 'pdf' : ext === 'ics' ? 'ics' : /^html?$/.test(ext) ? 'html' : 'sheet';
   S.icsDescriptions = {};
   try{
     const buf = await file.arrayBuffer();
     if(S.source === 'pdf'){
       setBadge('Reading PDF…', true);
       S.wb = await pdfToWorkbook(buf);
+    } else if(S.source === 'html'){
+      S.wb = htmlToWorkbook(new TextDecoder('utf-8').decode(buf));
     } else if(S.source === 'ics'){
       const r = icsToWorkbook(new TextDecoder('utf-8').decode(buf));
       S.wb = r.wb; S.icsDescriptions = r.descriptions;
@@ -735,7 +761,7 @@ function loadSheet(preferredMode){
   try{
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
-      setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : 'Crew roster', true);
+      setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : S.source === 'html' ? 'Crew roster · web page' : 'Crew roster', true);
       log('Parsed '+S.model.stats[0][1]+' days, '+timeLabel(S.model.timeMode, S.model.home).replace('All times', 'times')+'. Check the table, then press Download PDF.', 'ok');
       if(S.source === 'ics') log('Calendar files don\'t include aircraft, rank, work type or duty codes, and Block Hrs here are the scheduled flight times (credited hours for augmented crew can be lower). Use the Excel export for exact figures.', 'warn');
       S.warnings.forEach(w => log(w, 'warn'));

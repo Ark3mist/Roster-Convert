@@ -193,3 +193,58 @@ function icsToWorkbook(text){
   const {aoa, descriptions} = icsToAoa(text);
   return {wb: {SheetNames: ['Calendar'], Sheets: {Calendar: XLSX.utils.aoa_to_sheet(aoa)}}, descriptions};
 }
+
+/* ------------------------------------------------------------------ *
+ *  Saved web page (.html) of the Roster Report (JasperReports HTML)
+ *  Parsed as inert data with DOMParser: no scripts run, nothing loads.
+ * ------------------------------------------------------------------ */
+/** Lay out a <table> as a grid that honours colspan/rowspan: [{cells:[{col, span, text}]}]. */
+function tableGrid(table){
+  const taken = [];          // taken[row][col] = true when filled by a rowspan from above
+  const rows = [];
+  [...table.rows].forEach((tr, r) => {
+    const cells = []; let c = 0;
+    taken[r] = taken[r] || [];
+    for(const td of tr.cells){
+      while(taken[r][c]) c++;
+      const span = Math.max(1, +td.colSpan || 1), rspan = Math.max(1, +td.rowSpan || 1);
+      for(let dr = 0; dr < rspan; dr++){ taken[r+dr] = taken[r+dr] || []; for(let dc = 0; dc < span; dc++) taken[r+dr][c+dc] = true; }
+      const text = (td.innerText !== undefined ? td.innerText : td.textContent).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+      cells.push({col: c, span, text});
+      c += span;
+    }
+    rows.push(cells);
+  });
+  return rows;
+}
+
+function htmlToAoa(text){
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const aoa = [];
+  let labels = null;                       // header labels in output order (from the first table)
+  for(const table of doc.querySelectorAll('table')){
+    const grid = tableGrid(table);
+    const hi = grid.findIndex(cells => cells.some(c => c.text === 'Date') && cells.some(c => /^Pairing/.test(c.text)));
+    if(hi < 0) continue;
+    const hdr = grid[hi].filter(c => c.text);
+    const labelAt = col => { const h = hdr.find(h => col >= h.col && col < h.col + h.span); return h ? h.text : null; };
+    if(!labels){
+      // Lines above the header: title, period, "NAME | STAFF | FLEET | BASE | RANK", totals.
+      grid.slice(0, hi).forEach(cells => { const t = cells.map(c => c.text).filter(Boolean); if(t.length) aoa.push(t); });
+      labels = hdr.map(h => h.text);
+      aoa.push(labels);
+    }
+    for(const cells of grid.slice(hi + 1)){
+      if(!cells.some(c => c.text)) continue;
+      const row = labels.map(() => '');
+      cells.forEach(c => { const l = c.text && labelAt(c.col); const k = l ? labels.indexOf(l) : -1; if(k >= 0) row[k] = row[k] ? row[k]+' '+c.text : c.text; });
+      if(row.some(Boolean)) aoa.push(row);
+    }
+  }
+  if(!labels) throw new Error('This web page doesn\'t contain a crew Roster Report table (no "Date" / "Pairing/Activity" header found).');
+  return aoa;
+}
+
+function htmlToWorkbook(text){
+  return {SheetNames: ['Web page'], Sheets: {'Web page': XLSX.utils.aoa_to_sheet(htmlToAoa(text))}};
+}
