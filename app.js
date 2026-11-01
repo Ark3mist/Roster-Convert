@@ -446,9 +446,9 @@ function buildRosterModel(ws){
     const v = clockVotes(legs, home);
     const d = detectClock(legs, home);
     srcTime = (parsed.srcTime === 'local' && !v.same && !v.local) ? 'local' : d.clock;
-    if(srcTime !== 'base') S.warnings.push('This file\'s times are '+(srcTime === 'utc' ? 'in UTC' : 'already in each airport\'s local time')+' (detected: '+(d.why || 'column header says LT')+'). They have been read accordingly. If that\'s wrong, change "File is in".');
+    if(srcTime !== 'base') S.warnings.push('This file\'s times are '+(srcTime === 'utc' ? 'in UTC' : 'already in each airport\'s local time')+' (detected: '+(d.why || 'column header says LT')+'). They have been converted accordingly.');
   }
-  // Show what Auto found right inside the menu, so it can't be confused with "Show roster in".
+  // (hidden) keeps the detected clock for reference.
   $('srcSelect').options[0].textContent = 'Auto-detect' + (srcChoice === 'auto' ? ' → ' + CLOCK_NAME[srcTime] : '');
   const timeMode = $('timeSelect').value;
   const unknownStations = convertLegs(legs, srcTime, timeMode, home);
@@ -832,13 +832,12 @@ function loadSheet(preferredMode){
   $('modePick').hidden = !S.rosterOK;
   $('modeSelect').value = S.mode;
   $('timePick').hidden = S.mode !== 'roster';
-  $('srcPick').hidden = S.mode !== 'roster';
   S.warnings = [];
   try{
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
       setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : S.source === 'html' ? 'Crew roster · web page' : 'Crew roster', true);
-      log('Parsed '+S.model.stats[0][1]+' days. File is in: '+CLOCK_NAME[S.model.srcTime]+'. Showing roster in: '+CLOCK_NAME[S.model.timeMode]+'. Check the table, then press Download PDF.', 'ok');
+      log('Parsed '+S.model.stats[0][1]+' days. File detected as '+CLOCK_NAME[S.model.srcTime]+'; showing '+CLOCK_NAME[S.model.timeMode]+'. Check the table, then press Download PDF.', 'ok');
       if(S.source === 'ics') log('Calendar files don\'t include aircraft, rank, work type or duty codes, and Block Hrs here are the scheduled flight times (credited hours for augmented crew can be lower). Use the Excel export for exact figures.', 'warn');
       S.warnings.forEach(w => log(w, 'warn'));
     } else {
