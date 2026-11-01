@@ -425,6 +425,7 @@ const ROSTER_COLUMNS = [
   {key:'duty',  label:'Duty Hrs',  center:true},
   {key:'code',  label:'Duty Code', center:true},
   {key:'ac',    label:'A/C',       center:true},
+  {key:'hotel', label:'Hotel'},
 ];
 
 /** Day off / leave: just the code. Times (00:00–23:59) are noise; the station is kept only when away from base. */
@@ -632,7 +633,16 @@ function buildRawModel(ws, sheetName){
  * ------------------------------------------------------------------ */
 // Duty Code starts hidden for new users; once the user ticks/unticks columns, their choice is kept.
 const DEFAULT_HIDDEN = {roster: ['code'], raw: []};
-function hiddenCols(){ const v = store.get('hidden.'+S.model.kind, null); return new Set(v === null ? DEFAULT_HIDDEN[S.model.kind] || [] : v); }
+// Opt-in columns stay hidden for everyone, including users whose column choices were saved before
+// the column existed, until they tick it. Kept in a separate "shown" list for that reason.
+const OPT_IN = {roster: ['hotel'], raw: []};
+function shownOptIn(){ return new Set(store.get('shown.'+S.model.kind, [])); }
+function hiddenCols(){
+  const v = store.get('hidden.'+S.model.kind, null), shown = shownOptIn();
+  const hid = new Set(v === null ? DEFAULT_HIDDEN[S.model.kind] || [] : v);
+  (OPT_IN[S.model.kind] || []).forEach(k => shown.has(k) ? hid.delete(k) : hid.add(k));
+  return hid;
+}
 function visibleColumns(){
   const hid = hiddenCols();
   return S.model.columns.filter(c => !hid.has(c.key) && S.model.rows.some(r => r.cells[c.key]));
@@ -646,9 +656,15 @@ function renderColumnsPanel(){
     const cb = document.createElement('input');
     cb.type = 'checkbox'; cb.checked = !hid.has(c.key); cb.disabled = empty;
     cb.onchange = () => {
-      const h = hiddenCols();
-      cb.checked ? h.delete(c.key) : h.add(c.key);
-      store.set('hidden.'+S.model.kind, [...h]);
+      const kind = S.model.kind;
+      if((OPT_IN[kind] || []).includes(c.key)){
+        const sh = shownOptIn(); cb.checked ? sh.add(c.key) : sh.delete(c.key);
+        store.set('shown.'+kind, [...sh]);
+      } else {
+        const h = hiddenCols(); (OPT_IN[kind] || []).forEach(k => h.delete(k));
+        cb.checked ? h.delete(c.key) : h.add(c.key);
+        store.set('hidden.'+kind, [...h]);
+      }
       renderTable();
     };
     lab.append(cb, document.createTextNode(c.label + (empty ? ' (empty)' : '')));
@@ -951,6 +967,23 @@ function buildPDF(scale = 1){
     y += 3.2 * k;
   }
 
+  // 'wrap' sizes every column to its content and never limits the table to the page, so long free
+  // text (hotel names) would run off the right edge. Measure the columns: short ones keep their
+  // natural width, long ones share what is left of the page width and wrap inside it.
+  const isLong = c => m.rows.some(r => (r.cells[c.key] || '').length > 14);
+  doc.setFontSize(fontSize);
+  const natW = cols.map(c => {
+    doc.setFont(...F.medium); let w = doc.getTextWidth(pdfSafe(c.label));
+    doc.setFont(...F.regular); m.rows.forEach(r => { w = Math.max(w, doc.getTextWidth(pdfSafe(r.cells[c.key]))); });
+    return w * 1.06 + 2 * padX + 0.6;      // a little slack for bold report times and rounding
+  });
+  const longIdx = cols.map((c, i) => isLong(c) ? i : -1).filter(i => i >= 0);
+  const room = W - 2*M - natW.reduce((a, w, i) => longIdx.includes(i) ? a : a + w, 0);
+  const longW = {};
+  longIdx.slice().sort((a, b) => natW[a] - natW[b]).forEach((i, n, arr) => {
+    const share = Math.max(14 * k, (room - Object.values(longW).reduce((a, w) => a + w, 0)) / (arr.length - n));
+    longW[i] = Math.min(natW[i], share);
+  });
   doc.autoTable({
     startY: y,
     margin: {left: M, right: M, top: 10, bottom: 10},
@@ -965,8 +998,7 @@ function buildPDF(scale = 1){
     willDrawPage: paintBg,
     // Short columns never wrap (keeps "KUL 19:00" on one line); only long free text (hotel…) wraps.
     columnStyles: Object.fromEntries(cols.map((c, i) => {
-      const long = m.rows.some(r => (r.cells[c.key] || '').length > 14);
-      return [i, Object.assign({cellWidth: long ? 'auto' : 'wrap'}, c.center ? {halign:'center'} : c.num ? {halign:'right'} : {})];
+      return [i, Object.assign({cellWidth: i in longW ? longW[i] : 'wrap'}, c.center ? {halign:'center'} : c.num ? {halign:'right'} : {})];
     })),
     didParseCell: data => {
       if(data.section === 'head' && cols[data.column.index].center) data.cell.styles.halign = 'center';
