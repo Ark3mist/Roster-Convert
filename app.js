@@ -1038,11 +1038,12 @@ function buildPDF(scale = 1){
     y = bottom;
   }
 
+  const footerLine = pdfSafe('Generated '+fmtDate(new Date())+' / '+(($('titleInput').value || m.title).trim())+' ('+deviceName()+') ~by LipasTerbang');
   const pages = doc.getNumberOfPages();
   for(let p = 1; p <= pages; p++){
     doc.setPage(p);
     doc.setFont(...F.regular); doc.setFontSize(6); doc.setTextColor(...T.footer);
-    doc.text('Generated '+fmtDate(new Date())+'  ·  by LipasTerbang', M, PH - 4.5);
+    doc.text(footerLine, M, PH - 4.5);
     if(pages > 1) doc.text(p+' / '+pages, W - M, PH - 4.5, {align: 'right'});
   }
   return doc;
@@ -1127,6 +1128,23 @@ function applyScreenTheme(){
   const set = {'--panel': bg, '--panel2': bg2, '--text': T.ink, '--dim': T.dim, '--line': T.rule, '--duty-text': T.duty, '--off-text': T.off,
                '--lo-text': T.layover, '--ph-text': T.ph, '--warn': T.weekend, '--rpt-bg': T.hilite, '--rpt-text': T.hiliteInk};
   Object.entries(set).forEach(([k, v]) => area.style.setProperty(k, rgb(v)));
+}
+
+/**
+ * Device type and browser, e.g. "iPhone · Safari", "Android phone · Chrome", "Windows PC · Edge".
+ * Browsers don't reveal a device's own name (e.g. "Shafiq's iPhone"), so this is the closest available.
+ * Worked out locally from the user-agent; nothing is sent anywhere.
+ */
+function deviceName(){
+  const ua = navigator.userAgent || '';
+  const touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;          // iPadOS reports as a Mac
+  const device = /iPhone/.test(ua) ? 'iPhone' : (/iPad/.test(ua) || touchMac) ? 'iPad'
+    : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Android phone' : 'Android tablet')
+    : /Windows/.test(ua) ? 'Windows PC' : /Macintosh|Mac OS X/.test(ua) ? 'Mac' : /CrOS/.test(ua) ? 'Chromebook'
+    : /Linux/.test(ua) ? 'Linux PC' : 'Device';
+  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet'
+    : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+  return browser ? device+' · '+browser : device;
 }
 
 /** Shrink step by step until the whole roster fits on one page (stops at a still-readable size). */
