@@ -616,7 +616,10 @@ function renderTable(){
       td.textContent = r.cells[c.key] || '';
       if(c.num) td.className = 'num';
       if(c.key === 'date'){ td.className = 'date'; if(ph) td.title = ph; }
-      if(c.key === 'start' && !r.cls.includes('off')) td.className = 'start';
+      if(c.key === 'start' && !r.cls.includes('off')){
+        td.className = 'start';
+        if(td.textContent){ const sp = document.createElement('span'); sp.className = 'rpt'; sp.textContent = td.textContent; td.textContent = ''; td.appendChild(sp); }
+      }
       if(c.key === 'dep' && r.cls.includes('earlyrpt')) td.className = 'earlynote';
       tr.appendChild(td);
     });
@@ -834,6 +837,7 @@ function buildPDF(scale = 1){
   // Font colour only — no background highlights anywhere.
   const texts = {duty:[29,78,216], off:[63,120,0], layover:[109,40,217]};
   const PINK = [219,39,119], ORANGE = [204,102,0];
+  const HILITE = [255,226,92];          // highlighter yellow behind report times (the only highlight)
   const H = holidays();
   const padX = 1.4 * k, padY = 1.05 * k;
 
@@ -858,6 +862,10 @@ function buildPDF(scale = 1){
       doc.setTextColor(...color); doc.text(label, x, y);
       x += doc.getTextWidth(label) + 6;
     });
+    // Report time sample: same highlighter mark as in the table.
+    const lbl = 'RPT = report time', lw = doc.getTextWidth(lbl), fh = doc.getFontSize() * 0.3528;
+    doc.setFillColor(...HILITE); doc.roundedRect(x - 0.9, y - fh * 0.95, lw + 1.8, fh * 1.3, 0.7, 0.7, 'F');
+    doc.setTextColor(...INK); doc.text(lbl, x, y);
     y += 3.2 * k;
   }
 
@@ -885,10 +893,29 @@ function buildPDF(scale = 1){
       if(key === 'date' && row.cls.includes('weekend')) st.textColor = ORANGE;
       if(key === 'date' && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
       // Report time: bold, black and one size up so it stands out from the blue duty times.
-      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; st.fontSize = fontSize + k; }
+      // Report time: one size up, drawn bold on a highlighter mark (see willDrawCell/didDrawCell).
+      // autotable's own text is drawn in the highlight colour (invisible) so column widths stay right.
+      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = HILITE; st.fontSize = fontSize + k; data.cell.rpt = true; }
       if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
       // No lines or fills: a little extra space above each new day keeps days apart.
       if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: padY * 1.8, bottom: padY, left: padX, right: padX};
+    },
+    willDrawCell: data => {
+      if(data.section !== 'body' || !data.cell.rpt) return;
+      const c = data.cell, fs = c.styles.fontSize, txt = c.text.join(' ');
+      doc.setFont(F.medium[0], F.medium[1]); doc.setFontSize(fs);
+      const w = doc.getTextWidth(txt), h = fs * 0.3528 * 1.15, padH = 0.9 * k;
+      doc.setFillColor(...HILITE);
+      doc.roundedRect(c.x + c.padding('left') - padH, c.y + c.padding('top') - 0.35 * k, w + 2 * padH, h + 0.7 * k, 0.8 * k, 0.8 * k, 'F');
+    },
+    didDrawCell: data => {
+      if(data.section !== 'body' || !data.cell.rpt) return;
+      // Overlay the time in black with a hairline stroke: noticeably heavier than the font's own bold.
+      const c = data.cell, fs = c.styles.fontSize;
+      doc.setFont(F.medium[0], F.medium[1]); doc.setFontSize(fs); doc.setTextColor(...INK);
+      doc.setDrawColor(...INK); doc.setLineWidth(0.16 * k);
+      doc.text(c.text.join(' '), c.x + c.padding('left'), c.y + c.padding('top'), {baseline: 'top', renderingMode: 'fillThenStroke'});
+      doc.setLineWidth(0.2);
     },
   });
   y = doc.lastAutoTable.finalY + 6 * k;

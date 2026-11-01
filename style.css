@@ -1,5 +1,5 @@
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-7) format('woff2')}
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-7) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-8) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-8) format('woff2')}
 :root{
   --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#2a2e33;
   --text:#f2f3f5; --dim:#aeb4bb; --accent:#c6ff3d; --accent-ink:#0b0c0e;
@@ -8,6 +8,7 @@
   --lo-bg:#1d1b3d; --lo-text:#c4b5fd;
   --duty-text:#7fb2ff;
   --ph-bg:#4a1033; --ph-text:#ff8cc6;
+  --rpt-bg:#ffe25c; --rpt-text:#111;
   --mono:'DM Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
@@ -72,7 +73,9 @@ tr.off td{color:var(--off-text)}
 tr.layover td{color:var(--lo-text)}
 tr.duty td{color:var(--duty-text)}
 tr.weekend td.date{color:var(--warn)}
-tr td.start{font-weight:500;color:var(--text);font-size:1.08em}
+tr td.start{color:var(--text);font-size:1.08em}
+/* Report time: the one highlighted item — highlighter mark + heavy text. */
+td.start .rpt{background:var(--rpt-bg);color:var(--rpt-text);font-weight:500;-webkit-text-stroke:.4px currentColor;padding:1px 5px;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 tr td.earlynote{color:var(--text);font-weight:500}
 tr.holiday td.date{color:var(--ph-text);font-weight:500;cursor:help}
 .phDate{color:var(--ph-text);width:17ch;flex:none;align-self:center;font-size:12px}
@@ -104,7 +107,7 @@ tr.daystart td{border-top:1px solid var(--line)}
 
 @media print{
   @page{margin:10mm}
-  :root{--bg:#fff;--panel:#fff;--panel2:#f1f3f5;--line:#ccc;--text:#111;--dim:#555;--off-bg:#eef7dc;--off-text:#2f4a00;--lo-bg:#ede9fe;--lo-text:#5b21b6;--duty-bg:#dbeafe;--duty-text:#1e3a8a;--duty-line:#2563eb;--ph-bg:#fce7f3;--ph-text:#be185d;--warn:#cc6600;--duty-text:#1d4ed8;--off-text:#3f7800;--lo-text:#6d28d9;--ph-text:#db2777}
+  :root{--bg:#fff;--panel:#fff;--panel2:#f1f3f5;--line:#ccc;--text:#111;--dim:#555;--off-bg:#eef7dc;--off-text:#2f4a00;--lo-bg:#ede9fe;--lo-text:#5b21b6;--duty-bg:#dbeafe;--duty-text:#1e3a8a;--duty-line:#2563eb;--ph-bg:#fce7f3;--ph-text:#be185d;--warn:#cc6600;--duty-text:#1d4ed8;--off-text:#3f7800;--lo-text:#6d28d9;--ph-text:#db2777;--rpt-bg:#ffe25c;--rpt-text:#111}
   tr td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header,footer,#drop,.privacy,#status,#log,.toolbar,#columnsPanel,.btnRow,.legendRow button{display:none !important}
   main{padding:0;max-width:none}
