@@ -289,8 +289,10 @@ function detectClock(legs, home){
 }
 
 const utcOffsetLabel = zone => { const m = tzOffset(zone, Date.now()); return 'UTC'+(m >= 0 ? '+' : '-')+Math.floor(Math.abs(m)/60)+(Math.abs(m)%60 ? ':'+String(Math.abs(m)%60).padStart(2,'0') : ''); };
-const TIME_LABEL = {local: 'All times station local (LT)', utc: 'All times UTC',
-  base: home => 'All times '+(home || 'home base')+' ('+utcOffsetLabel(STATION_TZ[home] || 'Asia/Kuala_Lumpur')+')'};
+/** One name per clock, used everywhere (menus, messages, PDF). */
+const CLOCK_NAME = {base: 'Home base KUL (UTC+8)', local: 'Station local (LT)', utc: 'UTC'};
+const TIME_LABEL = {local: 'All times Station local (LT)', utc: 'All times UTC',
+  base: home => 'All times Home base '+(home || 'KUL')+' ('+utcOffsetLabel(STATION_TZ[home] || 'Asia/Kuala_Lumpur')+')'};
 const timeLabel = (mode, home) => mode === 'base' ? TIME_LABEL.base(home) : TIME_LABEL[mode];
 
 /* ------------------------------------------------------------------ *
@@ -439,11 +441,15 @@ function buildRosterModel(ws){
   // File clock: chosen by the user, or worked out (header label, then days-off pattern).
   const srcChoice = $('srcSelect').value;
   let srcTime = srcChoice !== 'auto' ? srcChoice : parsed.srcTime;
-  if(srcChoice === 'auto' && parsed.srcTime === 'base'){
+  if(srcChoice === 'auto' && parsed.srcTime !== 'utc'){
+    // Evidence from the flights decides; a "(LT)" header is only a tie-breaker when the flights can't tell.
+    const v = clockVotes(legs, home);
     const d = detectClock(legs, home);
-    srcTime = d.clock;
-    if(d.why) S.warnings.push('This file\'s times are '+(d.clock === 'utc' ? 'in UTC' : 'already in each airport\'s local time')+' (detected: '+d.why+'). They have been read accordingly. If that\'s wrong, change "File times".');
+    srcTime = (parsed.srcTime === 'local' && !v.same && !v.local) ? 'local' : d.clock;
+    if(srcTime !== 'base') S.warnings.push('This file\'s times are '+(srcTime === 'utc' ? 'in UTC' : 'already in each airport\'s local time')+' (detected: '+(d.why || 'column header says LT')+'). They have been read accordingly. If that\'s wrong, change "File is in".');
   }
+  // Show what Auto found right inside the menu, so it can't be confused with "Show roster in".
+  $('srcSelect').options[0].textContent = 'Auto-detect' + (srcChoice === 'auto' ? ' → ' + CLOCK_NAME[srcTime] : '');
   const timeMode = $('timeSelect').value;
   const unknownStations = convertLegs(legs, srcTime, timeMode, home);
   if(unknownStations.length) S.warnings.push('No time zone known for '+unknownStations.join(', ')+' — times there were converted using the home base ('+home+') zone. Tell the developer to add them.');
@@ -776,6 +782,7 @@ function render(){
  * ------------------------------------------------------------------ */
 async function handleFile(file){
   clearLog();
+  $('srcSelect').value = 'auto';              // a manual override applies to one file only
   $('privacyHead').classList.remove('blink');   // stop drawing attention once a roster is open
   S.file = file;
   $('status').hidden = false;
@@ -825,8 +832,7 @@ function loadSheet(preferredMode){
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
       setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : S.source === 'html' ? 'Crew roster · web page' : 'Crew roster', true);
-      const srcName = {base: (S.model.home || 'home base')+' time', utc: 'UTC', local: 'station local time'}[S.model.srcTime];
-      log('Parsed '+S.model.stats[0][1]+' days. File times read as '+srcName+'; showing '+timeLabel(S.model.timeMode, S.model.home).replace('All times ', '')+'. Check the table, then press Download PDF.', 'ok');
+      log('Parsed '+S.model.stats[0][1]+' days. File is in: '+CLOCK_NAME[S.model.srcTime]+'. Showing roster in: '+CLOCK_NAME[S.model.timeMode]+'. Check the table, then press Download PDF.', 'ok');
       if(S.source === 'ics') log('Calendar files don\'t include aircraft, rank, work type or duty codes, and Block Hrs here are the scheduled flight times (credited hours for augmented crew can be lower). Use the Excel export for exact figures.', 'warn');
       S.warnings.forEach(w => log(w, 'warn'));
     } else {
