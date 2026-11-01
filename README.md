@@ -41,7 +41,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
 
 - The privacy notice under the upload box pulses gently until a roster is loaded. It doesn't pulse for users who have reduced motion switched on.
 - The roster file is read and converted **in the browser only**. It is never uploaded, sent or stored on a server.
-- A Content-Security-Policy (`connect-src 'none'`, `form-action 'none'`, `default-src 'self'`) makes the browser block any attempt by the page to send data. All fonts and libraries are served from this site; there are no third-party requests.
+- A strict Content-Security-Policy (`connect-src 'none'`, `form-action 'none'`, `default-src 'self'`, `style-src 'self'` with no `'unsafe-inline'`) makes the browser block any attempt by the page to send data, and any inline script or style. All fonts and libraries are served from this site; there are no third-party requests. The importer strips a saved web page's own CSS before reading it, because only the cell text is used.
 - The roster is held in memory only and cleared when the page is refreshed or closed.
 - Only settings are kept in the browser's `localStorage`: hidden columns, code descriptions, holiday edits, time mode, page size, and names typed per staff number. **Clear saved settings** on the page wipes them.
 
@@ -57,7 +57,16 @@ Then open http://localhost:8000.
 
 ### Publish on GitHub Pages
 
-When releasing a change, bump `APP_VERSION` in `importers.js` and the `?v=` on the asset URLs in `index.html` and `style.css`. Browsers then load the new files instead of cached ones. The version is shown in the page footer.
+When releasing a change, run:
+
+```bash
+./release.sh
+```
+
+It sets the next version (today's date plus a counter, e.g. `2026.11.01-28`) in `APP_VERSION` in `importers.js` and in every `?v=` asset URL in `index.html` and `style.css`. It then checks that every reference matches and that no local asset is missing a `?v=`. Browsers then load the new files instead of cached ones. The version is shown in the page footer.
+
+- `./release.sh 2026.12.01-01` sets an exact version.
+- `./release.sh --check` only verifies, and exits with an error if anything is out of step.
 
 
 Repo **Settings → Pages → Deploy from a branch**, then choose the branch and `/ (root)`.
@@ -70,5 +79,6 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 | `style.css` | Dark theme, plus light styles for printing |
 | `importers.js` | PDF, saved web page (HTML) and iCalendar readers that rebuild the Roster Report table |
 | `app.js` | Parsing, rendering, PDF/CSV export |
+| `release.sh` | Bumps and verifies the version on every asset URL |
 | `vendor/fonts/` | DM Mono, Pixelify Sans, Montserrat, Titillium Web and Barlow Condensed (all SIL OFL): woff2 for the page, base64 TTF for the PDF |
 | `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2, pdf.js 3.11.174 (loaded only when a PDF is opened) (bundled here so the app works offline and does not depend on a CDN) |

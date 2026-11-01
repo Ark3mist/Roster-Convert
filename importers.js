@@ -5,7 +5,7 @@
 'use strict';
 
 /** Bump on every release: added to file URLs so browsers fetch the new version instead of a cached one. */
-const APP_VERSION = '2026.11.01-26';
+const APP_VERSION = '2026.11.01-28';
 
 /* ------------------------------------------------------------------ *
  *  PDF → array-of-arrays (same layout as the Excel Roster Report)
@@ -221,8 +221,17 @@ function tableGrid(table){
   return rows;
 }
 
+/** Remove the saved page's own CSS before parsing. Only cell text is read, never styles,
+ *  and a DOMParser document inherits this page's strict style-src policy, so the portal's
+ *  thousands of inline style="" attributes would each raise a (harmless) CSP violation. */
+function stripStyles(text){
+  return text.replace(/<style\b[\s\S]*?<\/style\s*>/gi, '')
+             .replace(/<link\b[^>]*>/gi, '')
+             .replace(/(<[a-z][^>]*?)\s+style\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '$1');
+}
+
 function htmlToAoa(text){
-  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const doc = new DOMParser().parseFromString(stripStyles(text), 'text/html');
   const aoa = [];
   let labels = null;                       // header labels in output order (from the first table)
   for(const table of doc.querySelectorAll('table')){
