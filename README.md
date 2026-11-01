@@ -33,7 +33,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   Daylight saving is handled automatically. Duties move to the date they fall on in the chosen clock. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
 - Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**. The PDF and Print shrink to fit **one page**: text gets smaller step by step, but never below a readable size. A compact block at the bottom puts Statistics (in two columns), **Code** (code descriptions) and **PH** (public holidays) side by side. Print opens that same one-page PDF.
 - Downloaded files are named **`Name, Staff number, Month Year`**, e.g. `Shafiq Fakhri Othman, 2106537, November 2026.pdf`. Exports often cut names short, so type the full name in the title box once. It is remembered for that staff number.
-- **Themes:** Default, Black & White, Dark, Minecraft and Roblox colour palettes. They apply to the PDF, Print and the on-screen roster.
+- **Themes:** Default, Black & White, Dark, Minecraft and Roblox colour palettes. They apply to the PDF, Print and the on-screen roster. Minecraft uses the pixel font *Pixelify Sans* and Roblox uses *Montserrat*, both open-licensed (SIL OFL) look-alikes, since the official game fonts can't be redistributed. These fonts load only when their theme is chosen.
 - Columns can be hidden. **Duty Code** is hidden by default until you tick it. The code legend can be edited. All of these are remembered on your device.
 
 ## Privacy
@@ -68,5 +68,5 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 | `style.css` | Dark theme, plus light styles for printing |
 | `importers.js` | PDF, saved web page (HTML) and iCalendar readers that rebuild the Roster Report table |
 | `app.js` | Parsing, rendering, PDF/CSV export |
-| `vendor/fonts/` | DM Mono font (SIL OFL): woff2 for the page, base64 TTF for the PDF |
+| `vendor/fonts/` | DM Mono, Pixelify Sans and Montserrat (all SIL OFL): woff2 for the page, base64 TTF for the PDF |
 | `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2, pdf.js 3.11.174 (loaded only when a PDF is opened) (bundled here so the app works offline and does not depend on a CDN) |

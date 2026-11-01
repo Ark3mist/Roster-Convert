@@ -857,7 +857,14 @@ const fileBase = () => {
 };
 
 /** Register DM Mono in a jsPDF doc; falls back to Courier if the font file is missing. */
-function pdfFont(doc){
+function pdfFont(doc, T){
+  // Theme font (Minecraft / Roblox style) when its file has been loaded; otherwise DM Mono.
+  const tf = T && T.font, TF = tf && window[tf.global];
+  if(TF){
+    doc.addFileToVFS(tf.family+'-Regular.ttf', TF.regular); doc.addFont(tf.family+'-Regular.ttf', tf.family, 'normal');
+    doc.addFileToVFS(tf.family+'-Medium.ttf', TF.medium);   doc.addFont(tf.family+'-Medium.ttf', tf.family, 'bold');
+    return {regular: [tf.family, 'normal'], medium: [tf.family, 'bold']};
+  }
   const F = window.DM_MONO_TTF;
   if(!F) return {regular: ['courier', 'normal'], medium: ['courier', 'bold']};
   doc.addFileToVFS('DMMono-Regular.ttf', F.regular); doc.addFont('DMMono-Regular.ttf', 'DMMono', 'normal');
@@ -881,7 +888,7 @@ function buildPDF(scale = 1){
     orient = chars * chW > (paper === 'letter' ? 200 : 194) ? 'landscape' : 'portrait';
   }
   const doc = new jsPDF({orientation: orient, unit: 'mm', format: paper});
-  const F = pdfFont(doc);
+  const F = pdfFont(doc, currentTheme());
   const W = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight(), M = 10;
   const T = currentTheme();
   const INK = T.ink, DIM = T.dim;
@@ -1026,9 +1033,11 @@ const THEMES = {
               duty: [0,0,0],      off: [95,95,95],   layover: [0,0,0],      ph: [0,0,0],      weekend: [95,95,95],   hilite: [212,212,212], hiliteInk: [0,0,0], footer: [130,130,130]},
   dark:      {name: 'Dark',            bg: [17,19,22],     ink: [240,242,245], dim: [160,166,173], head: [160,166,173], rule: [70,75,80],
               duty: [125,178,255], off: [198,255,61], layover: [196,181,253], ph: [255,140,198], weekend: [255,180,84], hilite: [255,226,92], hiliteInk: [17,17,17], footer: [120,125,130]},
-  minecraft: {name: 'Minecraft',       bg: [244,236,214],  ink: [60,44,30],  dim: [125,105,85],  head: [90,70,50],   rule: [134,96,67],
+  minecraft: {name: 'Minecraft',       font: {family: 'PixelifySans', global: 'FONT_PIXELIFY', src: 'vendor/fonts/pixelify.js', css: "'Pixelify Sans', monospace"},
+              bg: [244,236,214],  ink: [60,44,30],  dim: [125,105,85],  head: [90,70,50],   rule: [134,96,67],
               duty: [0,120,120],  off: [76,135,40],  layover: [31,62,158],  ph: [170,0,0],    weekend: [134,96,67],  hilite: [252,219,5], hiliteInk: [40,30,20], footer: [150,130,110]},
-  roblox:    {name: 'Roblox',          bg: null,           ink: [27,42,53],  dim: [99,95,98],    head: [99,95,98],   rule: [163,162,165],
+  roblox:    {name: 'Roblox',          font: {family: 'Montserrat', global: 'FONT_MONTSERRAT', src: 'vendor/fonts/montserrat.js', css: "'Montserrat', sans-serif"},
+              bg: null,           ink: [27,42,53],  dim: [99,95,98],    head: [99,95,98],   rule: [163,162,165],
               duty: [13,105,172], off: [75,151,75],  layover: [107,50,124], ph: [196,40,28],  weekend: [218,133,65], hilite: [245,205,48], hiliteInk: [27,42,53], footer: [163,162,165]},
 };
 const currentTheme = () => THEMES[$('themeSelect') ? $('themeSelect').value : 'default'] || THEMES.default;
@@ -1038,6 +1047,8 @@ function applyScreenTheme(){
   const id = $('themeSelect').value, T = THEMES[id] || THEMES.default, area = $('printArea');
   const vars = ['--panel','--panel2','--text','--dim','--line','--duty-text','--off-text','--lo-text','--ph-text','--warn','--rpt-bg','--rpt-text'];
   vars.forEach(v => area.style.removeProperty(v));
+  area.style.fontFamily = T.font ? T.font.css : '';
+  loadThemeFont(T).catch(() => {});
   if(id === 'default') return;
   const rgb = a => 'rgb('+a.join(',')+')';
   const bg = T.bg || [255,255,255], bg2 = bg.map(c => Math.round(c * 0.94));
@@ -1056,14 +1067,30 @@ function buildOnePagePDF(){
   return {doc, fit: false, scale: 0.6};
 }
 
-function exportPDF(){
+/** Load a theme's PDF font file on demand (only Minecraft / Roblox need one). */
+const themeFontLoads = {};
+function loadThemeFont(T){
+  const tf = T && T.font;
+  if(!tf || window[tf.global]) return Promise.resolve();
+  return themeFontLoads[tf.global] ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = tf.src+'?v='+APP_VERSION;
+    s.onload = resolve;
+    s.onerror = () => { delete themeFontLoads[tf.global]; reject(new Error('Theme font failed to load')); };
+    document.head.appendChild(s);
+  });
+}
+
+async function exportPDF(){
+  await loadThemeFont(currentTheme()).catch(() => log('Theme font could not be loaded, using the default font.', 'warn'));
   const {doc, fit} = buildOnePagePDF();
   if(!fit) log('This roster is too long to fit on one page at a readable size, so it continues onto page 2. Try Landscape, or hide some columns.', 'warn');
   doc.save(fileBase()+'.pdf');
 }
 
 /** Print the same one-page PDF (opens it in a new tab with the print dialog). */
-function printPDF(){
+async function printPDF(){
+  await loadThemeFont(currentTheme()).catch(() => {});
   const {doc} = buildOnePagePDF();
   doc.setProperties({title: fileBase()});
   doc.autoPrint();
@@ -1101,9 +1128,9 @@ function exportCSV(){
 
   $('sheetSelect').onchange = e => { S.sheet = e.target.value; loadSheet(); };
   $('modeSelect').onchange = e => loadSheet(e.target.value);
-  $('pdfBtn').onclick = () => { try{ exportPDF(); }catch(err){ console.error(err); log('PDF export failed: '+err.message, 'err'); } };
+  $('pdfBtn').onclick = () => exportPDF().catch(err => { console.error(err); log('PDF export failed: '+err.message, 'err'); });
   // The browser's "Save as PDF" uses the page title as the file name.
-  $('printBtn').onclick = () => { try{ printPDF(); }catch(err){ console.error(err); log('Print failed: '+err.message, 'err'); } };
+  $('printBtn').onclick = () => printPDF().catch(err => { console.error(err); log('Print failed: '+err.message, 'err'); });
   $('titleInput').addEventListener('change', () => {
     const m = S.model; if(!m || !m.staffId) return;
     const names = store.get('names', {}), v = $('titleInput').value.trim();
