@@ -17,7 +17,7 @@
 <body>
 <header>
   <h1>ROSTER <span>CONVERT</span></h1>
-  <div class="sub">xls / xlsx roster → clean daily roster → PDF · <span id="privacyLine">runs fully in your browser, nothing is uploaded</span></div>
+  <div class="sub">xls / xlsx roster → clean daily roster → PDF · runs fully in your browser, nothing is uploaded</div>
 </header>
 
 <main>
@@ -49,9 +49,6 @@
 
   <div class="toolbar" id="toolbar" hidden>
     <button class="primary" id="pdfBtn">⬇ Download PDF</button>
-    <label class="opt share" id="sharePick" hidden>
-      <input type="checkbox" id="shareChk"> Share to Roster Bank
-    </label>
     <label class="opt" id="timePick">Times
       <select id="timeSelect">
         <option value="local">Local (LT)</option>
@@ -75,8 +72,6 @@
     <button id="csvBtn">CSV</button>
     <button id="columnsBtn">Columns</button>
   </div>
-
-  <div id="shareNote" class="shareNote" hidden></div>
 
   <div id="columnsPanel" class="card" hidden>
     <h2>Columns <small>untick to hide on screen and in the PDF — remembered on this device</small></h2>
@@ -120,9 +115,8 @@
   </div>
 </main>
 
-<footer>Roster Convert · <span id="privacyFoot">your file never leaves this device</span></footer>
+<footer>Roster Convert · your file never leaves this device</footer>
 
-<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

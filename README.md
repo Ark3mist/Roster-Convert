@@ -18,7 +18,6 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
 - **Times: Local (LT) or UTC**. Times are converted per station using each airport's time zone, including daylight saving, and duties move to their UTC date. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
 - Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**.
 - Downloaded files are named **`Name, Staff number, Month Year`**, e.g. `Shafiq Fakhri Othman, 2106537, November 2026.pdf`. Exports often cut names short, so type the full name in the title box once. It is remembered for that staff number.
-- **Roster Bank (optional, opt-in):** a **Share to Roster Bank** checkbox, unticked by default, saves a copy of the PDF to the site owner's private Google Drive. It only appears once `bankUrl` is set in `config.js`. Setup: [bank/README.md](bank/README.md).
 - Columns can be hidden. The code legend can be edited. Both are remembered on your device.
 
 ## Run it
@@ -42,6 +41,4 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 | `index.html` | Page layout |
 | `style.css` | Dark theme, plus light styles for printing |
 | `app.js` | Parsing, rendering, PDF/CSV export |
-| `config.js` | Roster Bank settings (Apps Script URL, owner name) |
-| `bank/` | Google Apps Script for the Roster Bank and its setup guide |
 | `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2 (bundled here so the app works offline and does not depend on a CDN) |
