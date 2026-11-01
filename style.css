@@ -1,5 +1,5 @@
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-8) format('woff2')}
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-8) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-9) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-9) format('woff2')}
 :root{
   --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#2a2e33;
   --text:#f2f3f5; --dim:#aeb4bb; --accent:#c6ff3d; --accent-ink:#0b0c0e;
@@ -73,9 +73,9 @@ tr.off td{color:var(--off-text)}
 tr.layover td{color:var(--lo-text)}
 tr.duty td{color:var(--duty-text)}
 tr.weekend td.date{color:var(--warn)}
-tr td.start{color:var(--text);font-size:1.08em}
+tr td.start{color:var(--text)}
 /* Report time: the one highlighted item — highlighter mark + heavy text. */
-td.start .rpt{background:var(--rpt-bg);color:var(--rpt-text);font-weight:500;-webkit-text-stroke:.4px currentColor;padding:1px 5px;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td.start .rpt{background:var(--rpt-bg);color:var(--rpt-text);font-weight:500;padding:1px 5px;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 tr td.earlynote{color:var(--text);font-weight:500}
 tr.holiday td.date{color:var(--ph-text);font-weight:500;cursor:help}
 .phDate{color:var(--ph-text);width:17ch;flex:none;align-self:center;font-size:12px}
