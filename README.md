@@ -6,7 +6,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
 
 - **Crew roster exports** (the "Roster → Download Excel" file, with `Date`, `Pairing/Activity`, `Duty Report`, `Item`, `Dep Stn`, `Arr. Stn`, `Flying Hrs`, `Duty Hrs` and similar columns) become a **daily roster**:
   - the whole roster month is listed (1st to last day), including blank days, even if the export starts later or ends earlier
-  - flights that land after midnight are split onto the arrival day
+  - a flight that lands after midnight keeps its arrival on the same line, marked `(+1)`. The day after shows `LO` if you are still away.
   - empty days at an outstation between two flights are marked `LO` (layover)
   - any other day with no code is marked `AD` (available day), with the last station from the previous duty (e.g. `AD  KUL`). Available days are counted in the statistics.
   - day-off and leave codes (`DO`, `DO1`, `D`, `AL`, `MC1`…) are highlighted and shown as the code only, without the 00:00–23:59 times. The station is shown only when the day off is away from base. Weekend dates are coloured.

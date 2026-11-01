@@ -478,7 +478,6 @@ function buildRosterModel(ws){
       return;
     }
 
-    const sameDay = ymd(l.depDate) === ymd(l.arrDate);
     // report the evening before a just-after-midnight departure
     if(l.repDate && dayDiff(l.repDate, l.depDate) > 0){
       // Flagged so it can't be overlooked: the classic missed report (evening before an after-midnight departure).
@@ -490,11 +489,15 @@ function buildRosterModel(ws){
     dayOf(l.depDate).rows.push(Object.assign({}, base, {
       start: showRep ? l.repTime : '', item: l.item,
       dep: st(l.depStn, l.depTime),
-      arr: sameDay ? st(l.arrStn, l.arrTime) : '',
-      end: sameDay ? rel(l.debTime, l.debDate, l.depDate) : '',
+      // Arrival stays on the flight's own line, marked (+1) when it lands the next day
+      // (e.g. Home base: MH727 KUL 22:35 → CGK 00:45(+1); Station local: → CGK 23:45).
+      arr: st(l.arrStn, rel(l.arrTime, l.arrDate, l.depDate)),
+      end: rel(l.debTime, l.debDate, l.depDate),
       block: l.fly, duty: l.duty,
     }));
-    if(!sameDay){
+    // Landed back at base after midnight: the arrival day keeps a short arrival/debrief line, so it is
+    // part of the duty (not shown as an available day). At an outstation the next day is a layover instead.
+    if(ymd(l.arrDate) !== ymd(l.depDate) && l.arrStn && l.arrStn === home){
       dayOf(l.arrDate).rows.push({start:'', item:'', rank:'', dep:'', arr: st(l.arrStn, l.arrTime),
         end: rel(l.debTime, l.debDate, l.arrDate), work:'', block:'', duty:'', code:'', ac:'', hotel: ''});
     }
@@ -507,7 +510,10 @@ function buildRosterModel(ws){
   flights.forEach((l, i) => {
     const next = flights[i+1];
     if(!next || !l.arrStn || l.arrStn === home || (next.depStn && next.depStn !== l.arrStn)) return;
-    for(let c = addDays(l.arrDate, 1); c < next.depDate; c = addDays(c, 1)){
+    // Days at the outstation before the next departure — including the arrival day itself when the
+    // flight landed after midnight (its arrival is shown on the previous day's line with (+1)).
+    const firstAway = ymd(l.arrDate) !== ymd(l.depDate) ? l.arrDate : addDays(l.arrDate, 1);
+    for(let c = new Date(firstAway); c < next.depDate; c = addDays(c, 1)){
       const d = dayOf(c);
       if(d.rows.length) continue;
       const showRep = next.repDate && ymd(next.repDate) === ymd(c);
