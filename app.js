@@ -561,6 +561,7 @@ function renderTable(){
       td.textContent = r.cells[c.key] || '';
       if(c.num) td.className = 'num';
       if(c.key === 'date'){ td.className = 'date'; if(ph) td.title = ph; }
+      if(c.key === 'start') td.className = 'start';
       tr.appendChild(td);
     });
     frag.appendChild(tr);
@@ -805,6 +806,8 @@ function exportPDF(){
       const isDate = cols[data.column.index].key === 'date';
       if(isDate && row.cls.includes('weekend')) st.textColor = ORANGE;
       if(isDate && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
+      // Duty Start (report time) is the time crew most often miss: always bold.
+      if(cols[data.column.index].key === 'start'){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
       // No lines or fills: a little extra space above each new day keeps days apart.
       if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: 1.9, bottom: 1.05, left: 1.4, right: 1.4};
     },
