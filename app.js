@@ -333,6 +333,17 @@ function buildRosterModel(ws){
     }
   });
 
+  // Always show the full roster month(s), even when the export starts after the 1st
+  // or ends before month end. The roster month = month holding most of the dated days;
+  // earlier/later data (e.g. a trip spilling into the next month) is never cut off.
+  const perMonth = {};
+  Object.values(days).forEach(d => { const k = d.date.getFullYear()*12 + d.date.getMonth(); perMonth[k] = (perMonth[k] || 0) + 1; });
+  const mainKey = +Object.keys(perMonth).sort((a, b) => perMonth[b] - perMonth[a] || a - b)[0];
+  const monthStart = new Date(Math.floor(mainKey/12), mainKey % 12, 1);
+  const monthEnd = new Date(Math.floor(mainKey/12), mainKey % 12 + 1, 0);
+  if(monthStart < minD) minD = monthStart;
+  if(monthEnd > maxD) maxD = monthEnd;
+
   // Model rows: every calendar day in range, first row carries the date.
   const out = [];
   let blockMin = 0, dutyMin = 0, sectors = 0, offBase = 0, offAway = 0, workDays = 0;

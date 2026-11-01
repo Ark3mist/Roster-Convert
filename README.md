@@ -5,7 +5,7 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
 ## What it does
 
 - **Crew roster exports** (the "Roster → Download Excel" file, with `Date`, `Pairing/Activity`, `Duty Report`, `Item`, `Dep Stn`, `Arr. Stn`, `Flying Hrs`, `Duty Hrs` and similar columns) become a **daily roster**:
-  - every calendar day in the range is listed, including blank days
+  - the whole roster month is listed (1st to last day), including blank days, even if the export starts later or ends earlier
   - flights that land after midnight are split onto the arrival day
   - empty days at an outstation between two flights are marked `LO` (layover)
   - day-off and leave codes (`DO`, `AL`, `EL`, `MCH`…) are highlighted, and weekend dates are coloured
