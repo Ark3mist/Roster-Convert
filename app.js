@@ -750,7 +750,7 @@ function pdfFont(doc){
   return {regular: ['DMMono', 'normal'], medium: ['DMMono', 'bold']};
 }
 
-function exportPDF(){
+function buildPDF(){
   const {jsPDF} = window.jspdf;
   const cols = visibleColumns();
   const m = S.model;
@@ -871,7 +871,54 @@ function exportPDF(){
     doc.text('Generated '+fmtDate(new Date()), M, PH - 6);
     doc.text(p+' / '+pages, W - M, PH - 6, {align: 'right'});
   }
+  return doc;
+}
+
+function exportPDF(){
+  const doc = buildPDF();
   doc.save(fileBase()+'.pdf');
+  if(bankEnabled() && $('shareChk').checked && S.model.kind === 'roster') shareToBank(doc);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Roster Bank (opt-in): sends the PDF to the site owner's Google Drive
+ *  via their Apps Script, but only when the user ticks "Share to Roster Bank".
+ * ------------------------------------------------------------------ */
+const CFG = Object.assign({bankUrl: '', bankOwner: 'the owner of this site'}, window.ROSTER_CONFIG || {});
+const bankEnabled = () => /^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.bankUrl);
+
+async function shareToBank(doc){
+  const m = S.model;
+  log('Sharing to Roster Bank…');
+  try{
+    const res = await fetch(CFG.bankUrl, {
+      method: 'POST',
+      // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight.
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        kind: 'roster-pdf', consent: true,
+        fileName: fileBase(), name: ($('titleInput').value || '').trim(), staffId: m.staffId || '',
+        month: m.monthLabel || '', timeMode: m.timeMode || '', sourceFile: S.file ? S.file.name : '',
+        pdf: doc.output('datauristring').split(',')[1],
+      }),
+    });
+    const out = await res.json().catch(() => ({ok: false, error: 'Unexpected response ('+res.status+')'}));
+    if(!out.ok) throw new Error(out.error || 'Upload refused');
+    log('Shared to Roster Bank ✓ ('+out.file+')', 'ok');
+    $('shareChk').checked = false; updateShareNote();
+  }catch(err){
+    console.error(err);
+    log('Could not share to Roster Bank: '+err.message+'. Your download is not affected.', 'err');
+  }
+}
+
+function updateShareNote(){
+  const on = $('shareChk').checked;
+  const note = $('shareNote');
+  note.hidden = !on;
+  note.textContent = on
+    ? 'When you press Download PDF, a copy of this roster PDF (your name, staff number, duties and hotels) will be saved to a private Google Drive folder that only '+CFG.bankOwner+' can see. Untick to keep it on this device only.'
+    : '';
 }
 
 function exportCSV(){
@@ -901,6 +948,13 @@ function exportCSV(){
 
   $('sheetSelect').onchange = e => { S.sheet = e.target.value; loadSheet(); };
   $('modeSelect').onchange = e => loadSheet(e.target.value);
+  if(bankEnabled()){
+    $('sharePick').hidden = false;
+    $('privacyLine').textContent = 'runs in your browser; nothing is uploaded unless you tick "Share to Roster Bank"';
+    $('privacyFoot').textContent = 'your file stays on this device unless you choose to share it';
+  }
+  $('shareChk').checked = false;          // consent is never pre-ticked or remembered
+  $('shareChk').onchange = updateShareNote;
   $('pdfBtn').onclick = () => { try{ exportPDF(); }catch(err){ console.error(err); log('PDF export failed: '+err.message, 'err'); } };
   // The browser's "Save as PDF" uses the page title as the file name.
   $('printBtn').onclick = () => { const t = document.title; document.title = fileBase(); window.print(); document.title = t; };
