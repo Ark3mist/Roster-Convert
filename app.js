@@ -34,6 +34,9 @@ function setBadge(text, ok){ const b = $('fmtBadge'); b.textContent = text; b.cl
 const MON = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 const MON_UP = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+/** "SHAFIQ FAKHRI BIN OTH" → "Shafiq Fakhri Bin Oth" */
+const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'/(])([a-z])/g, (_, a, b) => a + b.toUpperCase());
 
 const ymd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
@@ -472,7 +475,9 @@ function buildRosterModel(ws){
   const dayCount = dayDiff(minD, maxD) + 1;
   return {
     kind: 'roster',
-    title: meta ? meta.name : 'Daily Roster',
+    title: meta ? titleCase(meta.name) : 'Daily Roster',
+    staffId: meta ? (meta.details.find(d => /^\d{4,}$/.test(d)) || '') : '',
+    monthLabel: MONTH_FULL[mainKey % 12]+' '+Math.floor(mainKey/12),
     subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD), timeMode === 'utc' ? 'All times UTC' : 'All times local (LT)'].filter(Boolean).join(' · '),
     timeMode,
     columns: ROSTER_COLUMNS,
@@ -651,7 +656,8 @@ function legendEntries(){
 
 function render(){
   const m = S.model;
-  $('titleInput').value = m.title;
+  // A name typed into the title box is remembered per staff number (exports often truncate names).
+  $('titleInput').value = (m.staffId && store.get('names', {})[m.staffId]) || m.title;
   $('rangeLbl').textContent = m.subtitle;
   renderTable();
   renderColumnsPanel();
@@ -728,10 +734,11 @@ function loadSheet(preferredMode){
  *  Export: PDF / print / CSV
  * ------------------------------------------------------------------ */
 const pdfSafe = s => String(s || '').replace(/[•]/g, '·').replace(/[–—]/g, '-').replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+/** File name: "Name, Staff number, Month Year" for rosters (e.g. "Shafiq Fakhri Othman, 2106537, November 2026"). */
 const fileBase = () => {
-  const t = ($('titleInput').value || 'roster').trim();
-  const range = S.model.kind === 'roster' && S.model.rows.length ? '_'+S.model.rows[0].cells.date : '';
-  return (t + range).replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'roster';
+  const name = ($('titleInput').value || '').trim();
+  const parts = S.model.kind === 'roster' ? [name, S.model.staffId, S.model.monthLabel] : [name || 'Sheet'];
+  return parts.filter(Boolean).join(', ').replace(/[\\/:*?"<>|\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Roster';
 };
 
 /** Register DM Mono in a jsPDF doc; falls back to Courier if the font file is missing. */
@@ -895,7 +902,14 @@ function exportCSV(){
   $('sheetSelect').onchange = e => { S.sheet = e.target.value; loadSheet(); };
   $('modeSelect').onchange = e => loadSheet(e.target.value);
   $('pdfBtn').onclick = () => { try{ exportPDF(); }catch(err){ console.error(err); log('PDF export failed: '+err.message, 'err'); } };
-  $('printBtn').onclick = () => window.print();
+  // The browser's "Save as PDF" uses the page title as the file name.
+  $('printBtn').onclick = () => { const t = document.title; document.title = fileBase(); window.print(); document.title = t; };
+  $('titleInput').addEventListener('change', () => {
+    const m = S.model; if(!m || !m.staffId) return;
+    const names = store.get('names', {}), v = $('titleInput').value.trim();
+    if(v && v !== m.title) names[m.staffId] = v; else delete names[m.staffId];
+    store.set('names', names);
+  });
   $('csvBtn').onclick = exportCSV;
   $('columnsBtn').onclick = () => { $('columnsPanel').hidden = !$('columnsPanel').hidden; };
   $('addCodeBtn').onclick = () => addLegendRow();
