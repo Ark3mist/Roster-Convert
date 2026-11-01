@@ -97,11 +97,12 @@ const minToHHMM = n => Math.floor(n/60)+':'+String(n%60).padStart(2,'0');
  * ------------------------------------------------------------------ */
 const DEFAULT_LEGEND = {
   DO:'Day Off', D:'Day Off', OFF:'Day Off', AL:'Annual Leave', EL:'Emergency Leave',
-  MCH:'Medical Leave', MC:'Medical Leave', SL:'Sick Leave', LO:'Layover',
+  MCH:'Medical Leave', MC:'Medical Leave', MC1:'Medical Leave', SL:'Sick Leave', LO:'Layover',
   OP:'Operating', DH:'Deadhead', DHD:'Deadhead', PAX:'Positioning as passenger',
   SB:'Standby', SBY:'Standby', RES:'Reserve', TRG:'Training', SIM:'Simulator',
 };
-const isOffCode = c => /^(D|DO\d*|OFF|RDO|AL|EL|MCH|MC|SL|LV)$/i.test(String(c || '').trim());
+// Off / leave codes, with optional number suffix (DO1, MC1, AL2…).
+const isOffCode = c => /^(D|DO|OFF|RDO|AL|EL|MCH|MC|SL|LV)\d*$/i.test(String(c || '').trim());
 
 function legend(){ return Object.assign({}, DEFAULT_LEGEND, store.get('legend', {})); }
 function describe(code){
@@ -194,34 +195,44 @@ function tzOffset(zone, utcMs){
   return Math.round((Date.UTC(+p.year, p.month-1, +p.day, +p.hour % 24, +p.minute) - utcMs) / 60000);
 }
 
-/** Shift a (date, "HH:MM") pair between a station's local time and UTC. dir = +1 local→UTC, −1 UTC→local. */
-function shiftTime(date, time, zone, dir){
+/** Re-express a wall-clock (date, "HH:MM") in zone `fromZ` as wall-clock time in zone `toZ`. */
+function shiftTime(date, time, fromZ, toZ){
   const m = /^(\d{2}):(\d{2})$/.exec(time || '');
-  if(!date || !m || !zone) return [date, time];
+  if(!date || !m || !fromZ || !toZ || fromZ === toZ) return [date, time];
   const wall = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), +m[1], +m[2]);
-  let out;
-  if(dir > 0){ let off = tzOffset(zone, wall); off = tzOffset(zone, wall - off*60000); out = wall - off*60000; }
-  else out = wall + tzOffset(zone, wall)*60000;
-  const d = new Date(out);
+  let off = tzOffset(fromZ, wall); off = tzOffset(fromZ, wall - off*60000);   // second pass settles DST edges
+  const instant = wall - off*60000;
+  const d = new Date(instant + tzOffset(toZ, instant)*60000);
   return [new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
           String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')];
 }
 
-/** Convert every leg's times from `from` ('local'|'utc') to `to`. Off/leave days are left on their date. */
+/**
+ * Convert every leg's times between clocks:
+ *   'base'  = home-base time for every station (how the crew Roster Report exports times)
+ *   'local' = each station's own local time
+ *   'utc'   = UTC
+ * Report times belong to the departure station, debrief times to the arrival station.
+ * Off/leave days are left on their date.
+ */
 function convertLegs(legs, from, to, home){
   if(from === to) return [];
-  const dir = to === 'utc' ? 1 : -1, unknown = new Set();
-  const zoneOf = stn => { const z = STATION_TZ[(stn || '').toUpperCase()]; if(stn && !z && /^[A-Z]{3}$/.test(stn)) unknown.add(stn); return z || STATION_TZ[home] || null; };
+  const unknown = new Set();
+  const baseZ = STATION_TZ[home] || 'Asia/Kuala_Lumpur';
+  const stnZ = stn => { const z = STATION_TZ[(stn || '').toUpperCase()]; if(stn && !z && /^[A-Z]{3}$/.test(stn)) unknown.add(stn); return z || baseZ; };
+  const clock = (mode, stationZone) => mode === 'utc' ? 'UTC' : mode === 'base' ? baseZ : stationZone;
   for(const l of legs){
     if(isOffCode(l.item)) continue;
-    const depZ = zoneOf(l.depStn), arrZ = zoneOf(l.arrStn || l.depStn);
-    [l.depDate, l.depTime] = shiftTime(l.depDate, l.depTime, depZ, dir);
-    [l.arrDate, l.arrTime] = shiftTime(l.arrDate, l.arrTime, arrZ, dir);
-    if(l.repTime) [l.repDate, l.repTime] = shiftTime(l.repDate, l.repTime, depZ, dir);   // report at departure station
-    if(l.debTime) [l.debDate, l.debTime] = shiftTime(l.debDate, l.debTime, arrZ, dir);   // debrief at arrival station
+    const depZ = stnZ(l.depStn), arrZ = stnZ(l.arrStn || l.depStn);
+    [l.depDate, l.depTime] = shiftTime(l.depDate, l.depTime, clock(from, depZ), clock(to, depZ));
+    [l.arrDate, l.arrTime] = shiftTime(l.arrDate, l.arrTime, clock(from, arrZ), clock(to, arrZ));
+    if(l.repTime) [l.repDate, l.repTime] = shiftTime(l.repDate, l.repTime, clock(from, depZ), clock(to, depZ));
+    if(l.debTime) [l.debDate, l.debTime] = shiftTime(l.debDate, l.debTime, clock(from, arrZ), clock(to, arrZ));
   }
   return [...unknown];
 }
+const TIME_LABEL = {local: 'All times station local (LT)', utc: 'All times UTC', base: home => 'All times '+(home || 'home base')+' (as exported)'};
+const timeLabel = (mode, home) => mode === 'base' ? TIME_LABEL.base(home) : TIME_LABEL[mode];
 
 /* ------------------------------------------------------------------ *
  *  Sheet reading
@@ -299,9 +310,11 @@ function parseRosterRows(ws){
     });
   }
   if(!rows.length) throw new Error('Roster header found, but no data rows below it.');
-  // Which clock the export uses: "(LT)" / no marker = local, "UTC" / "GMT" / "(Z)" = UTC.
+  // Which clock the export uses. The crew Roster Report gives every station's times in
+  // home-base time (e.g. LHR departures in KUL time) — that's the default. A header marked
+  // "UTC"/"GMT"/"(Z)" means UTC; "(LT)"/"Local" means each station's own local time.
   const depHead = idx.dep >= 0 ? String(text[h][idx.dep]) : '';
-  const srcTime = /\b(UTC|GMT)\b|\(Z\)/i.test(depHead) ? 'utc' : 'local';
+  const srcTime = /\b(UTC|GMT)\b|\(Z\)/i.test(depHead) ? 'utc' : /\(LT\)|\blocal\b/i.test(depHead) ? 'local' : 'base';
   return {rows, meta: findCrewMeta(text, h), srcTime};
 }
 
@@ -478,8 +491,8 @@ function buildRosterModel(ws){
     title: meta ? titleCase(meta.name) : 'Daily Roster',
     staffId: meta ? (meta.details.find(d => /^\d{4,}$/.test(d)) || '') : '',
     monthLabel: MONTH_FULL[mainKey % 12]+' '+Math.floor(mainKey/12),
-    subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD), timeMode === 'utc' ? 'All times UTC' : 'All times local (LT)'].filter(Boolean).join(' · '),
-    timeMode,
+    subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD), timeLabel(timeMode, home)].filter(Boolean).join(' · '),
+    timeMode, home,
     columns: ROSTER_COLUMNS,
     rows: out,
     stats: [
@@ -711,7 +724,7 @@ function loadSheet(preferredMode){
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
       setBadge('Crew roster', true);
-      log('Parsed '+S.model.stats[0][1]+' days, '+(S.model.timeMode === 'utc' ? 'times in UTC' : 'times local')+'. Check the table, then press Download PDF.', 'ok');
+      log('Parsed '+S.model.stats[0][1]+' days, '+timeLabel(S.model.timeMode, S.model.home).replace('All times', 'times')+'. Check the table, then press Download PDF.', 'ok');
       S.warnings.forEach(w => log(w, 'warn'));
     } else {
       S.model = buildRawModel(ws, S.sheet);
@@ -789,7 +802,7 @@ function buildPDF(scale = 1){
 
   if(m.kind === 'roster'){
     const key = [[texts.duty, 'Duty'], [texts.off, 'Off / Leave'], [texts.layover, 'Layover'], [PINK, 'Public holiday'], [ORANGE, 'Weekend'],
-                 [INK, m.timeMode === 'utc' ? 'Times: UTC' : 'Times: Local']];
+                 [INK, timeLabel(m.timeMode, m.home).replace('All times', 'Times:')]];
     let x = M;
     doc.setFont(...F.regular); doc.setFontSize(6.8 * Math.max(k, 0.85));
     key.forEach(([color, label]) => {
