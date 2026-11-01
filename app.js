@@ -750,16 +750,18 @@ function pdfFont(doc){
   return {regular: ['DMMono', 'normal'], medium: ['DMMono', 'bold']};
 }
 
-function exportPDF(){
+/** Build the PDF at a given scale (1 = normal). Smaller scales shrink text and spacing. */
+function buildPDF(scale = 1){
   const {jsPDF} = window.jspdf;
   const cols = visibleColumns();
   const m = S.model;
+  const k = scale;
   const paper = $('paperSelect').value;
-  const fontSize = cols.length > 14 ? 6 : cols.length > 11 ? 6.8 : 7.5;
+  const fontSize = (cols.length > 14 ? 6 : cols.length > 11 ? 6.8 : 7.5) * k;
   let orient = $('orientSelect').value;
   if(orient === 'auto'){
-    // Monospace width estimate; long free-text columns (hotel etc.) wrap, so cap them.
-    const chW = fontSize * 0.6 * 0.3528;
+    // Monospace width estimate at normal size; long free-text columns (hotel etc.) wrap, so cap them.
+    const chW = (fontSize / k) * 0.6 * 0.3528;
     const chars = cols.reduce((a, c) => a + Math.min(16, Math.max(5, ...m.rows.map(r => (r.cells[c.key] || '').length))) + 1.6, 0);
     orient = chars * chW > (paper === 'letter' ? 200 : 194) ? 'landscape' : 'portrait';
   }
@@ -771,38 +773,39 @@ function exportPDF(){
   const texts = {duty:[29,78,216], off:[63,120,0], layover:[109,40,217]};
   const PINK = [219,39,119], ORANGE = [204,102,0];
   const H = holidays();
+  const padX = 1.4 * k, padY = 1.05 * k;
 
   // Title line: name in medium weight, details in grey beside / under it.
-  let y = 15;
+  let y = 9 + 5 * k;
   const title = pdfSafe($('titleInput').value || m.title);
-  doc.setFont(...F.medium); doc.setFontSize(12); doc.setTextColor(...INK);
+  doc.setFont(...F.medium); doc.setFontSize(12 * Math.max(k, 0.8)); doc.setTextColor(...INK);
   doc.text(title, M, y);
   const tw = doc.getTextWidth(title);
-  doc.setFont(...F.regular); doc.setFontSize(8); doc.setTextColor(...DIM);
+  doc.setFont(...F.regular); doc.setFontSize(8 * Math.max(k, 0.8)); doc.setTextColor(...DIM);
   const subText = pdfSafe(m.subtitle);
   if(tw + 4 + doc.getTextWidth(subText) <= W - 2*M) doc.text(subText, M + tw + 4, y);
-  else { const sub = doc.splitTextToSize(subText, W - 2*M); y += 4.5; doc.text(sub, M, y); y += (sub.length - 1) * 3.4; }
-  y += 5.5;
+  else { const sub = doc.splitTextToSize(subText, W - 2*M); y += 4.2; doc.text(sub, M, y); y += (sub.length - 1) * 3.2; }
+  y += 5 * k;
 
   if(m.kind === 'roster'){
     const key = [[texts.duty, 'Duty'], [texts.off, 'Off / Leave'], [texts.layover, 'Layover'], [PINK, 'Public holiday'], [ORANGE, 'Weekend'],
                  [INK, m.timeMode === 'utc' ? 'Times: UTC' : 'Times: Local']];
     let x = M;
-    doc.setFont(...F.regular); doc.setFontSize(6.8);
+    doc.setFont(...F.regular); doc.setFontSize(6.8 * Math.max(k, 0.85));
     key.forEach(([color, label]) => {
       doc.setTextColor(...color); doc.text(label, x, y);
       x += doc.getTextWidth(label) + 6;
     });
-    y += 3.5;
+    y += 3.2 * k;
   }
 
   doc.autoTable({
     startY: y,
-    margin: {left: M, right: M, top: 12, bottom: 13},
+    margin: {left: M, right: M, top: 10, bottom: 10},
     head: [cols.map(c => pdfSafe(c.label))],
     body: m.rows.map(r => cols.map(c => pdfSafe(r.cells[c.key]))),
     theme: 'plain',
-    styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize, cellPadding: {top: 1.05, bottom: 1.05, left: 1.4, right: 1.4},
+    styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize, cellPadding: {top: padY, bottom: padY, left: padX, right: padX},
              textColor: INK, overflow: 'linebreak', valign: 'top', lineWidth: 0},
     headStyles: {font: F.medium[0], fontStyle: F.medium[1], fillColor: false, textColor: [85,90,96], valign: 'bottom',
                  lineWidth: {bottom: 0.25}, lineColor: [190,195,200]},
@@ -814,64 +817,84 @@ function exportPDF(){
     didParseCell: data => {
       if(data.section !== 'body') return;
       const row = m.rows[data.row.index], st = data.cell.styles;
-      const k = ['off', 'layover', 'duty'].find(c => row.cls.includes(c));
-      if(k) st.textColor = texts[k];
-      const isDate = cols[data.column.index].key === 'date';
-      if(isDate && row.cls.includes('weekend')) st.textColor = ORANGE;
-      if(isDate && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
-      // Duty Start (report time) is the time crew most often miss: always bold.
-      // Bold, black and one size up so it stands out from the blue duty times.
+      const c = ['off', 'layover', 'duty'].find(x => row.cls.includes(x));
+      if(c) st.textColor = texts[c];
       const key = cols[data.column.index].key;
-      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; st.fontSize = fontSize + 1; }
+      if(key === 'date' && row.cls.includes('weekend')) st.textColor = ORANGE;
+      if(key === 'date' && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
+      // Report time: bold, black and one size up so it stands out from the blue duty times.
+      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; st.fontSize = fontSize + k; }
       if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
       // No lines or fills: a little extra space above each new day keeps days apart.
-      if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: 1.9, bottom: 1.05, left: 1.4, right: 1.4};
+      if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: padY * 1.8, bottom: padY, left: padX, right: padX};
     },
   });
-  y = doc.lastAutoTable.finalY + 8;
+  y = doc.lastAutoTable.finalY + 6 * k;
 
-  const heading = text => {
-    if(y > PH - 28){ doc.addPage(); y = 16; }
-    doc.setFont(...F.medium); doc.setFontSize(9.5); doc.setTextColor(...INK);
-    doc.text(text, M, y); y += 2;
-  };
-
-  // Statistics: label over value, no boxes.
-  if(m.stats.length){
-    heading('Statistics');
-    const perRow = W - 2*M > 220 ? 7 : 4, cw = (W - 2*M) / perRow;
-    m.stats.forEach(([k, v], i) => {
-      const cx = M + (i % perRow) * cw, rowY = y + 4 + Math.floor(i / perRow) * 11;
-      doc.setFont(...F.regular); doc.setFontSize(7); doc.setTextColor(...DIM); doc.text(pdfSafe(k), cx, rowY);
-      doc.setFont(...F.medium); doc.setFontSize(12); doc.setTextColor(...INK); doc.text(pdfSafe(v), cx, rowY + 5.2);
-    });
-    y += 4 + Math.ceil(m.stats.length / perRow) * 11 + 3;
+  // Bottom block: Statistics | Code Description | Public Holidays side by side, to keep it on one page.
+  const blocks = [];
+  if(m.stats.length) blocks.push(['Statistics', m.stats, null]);
+  const legend = legendEntries();
+  if(legend.length) blocks.push(['Code Description', legend, null]);
+  if(m.kind === 'roster'){
+    const ph = holidaysInRange().map(([d, n]) => { const dt = new Date(d+'T00:00:00'); return [fmtDate(dt)+' '+DOW[dt.getDay()], n]; });
+    if(ph.length) blocks.push(['Public Holidays', ph, PINK]);
   }
-
-  const listTable = (title, rows, firstColColor) => {
-    if(!rows.length) return;
-    heading(title);
-    doc.autoTable({
-      startY: y, margin: {left: M, right: M, bottom: 13}, tableWidth: 'wrap',
-      body: rows.map(r => r.map(pdfSafe)), theme: 'plain',
-      styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize: 7.5, cellPadding: {top: 0.9, bottom: 0.9, left: 0, right: 6}, textColor: INK},
-      columnStyles: {0: {cellWidth: 'wrap', textColor: firstColColor || INK}},
+  if(blocks.length){
+    const gap = 6, colW = (W - 2*M - gap * (blocks.length - 1)) / blocks.length;
+    let bottom = y;
+    blocks.forEach(([heading, rows, firstColor], i) => {
+      const x = M + i * (colW + gap);
+      doc.setFont(...F.medium); doc.setFontSize(8.5 * Math.max(k, 0.8)); doc.setTextColor(...INK);
+      doc.text(heading, x, y + 3 * k);
+      doc.autoTable({
+        startY: y + 4.5 * k, margin: {left: x, right: W - x - colW, top: 10, bottom: 10}, tableWidth: colW,
+        body: rows.map(r => r.map(pdfSafe)), theme: 'plain',
+        styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize: 7 * k, cellPadding: {top: 0.6 * k, bottom: 0.6 * k, left: 0, right: 3},
+                 textColor: INK, overflow: 'linebreak'},
+        columnStyles: {0: {cellWidth: 'wrap', textColor: firstColor || DIM}, 1: heading === 'Statistics' ? {font: F.medium[0], fontStyle: F.medium[1], halign: 'right'} : {}},
+      });
+      bottom = Math.max(bottom, doc.lastAutoTable.finalY);
     });
-    y = doc.lastAutoTable.finalY + 7;
-  };
-  listTable('Code Description', legendEntries());
-  if(m.kind === 'roster') listTable('Public Holidays', holidaysInRange().map(([k, n]) => {
-    const d = new Date(k+'T00:00:00'); return [fmtDate(d)+' '+DOW[d.getDay()], n];
-  }), PINK);
+    y = bottom;
+  }
 
   const pages = doc.getNumberOfPages();
   for(let p = 1; p <= pages; p++){
     doc.setPage(p);
-    doc.setFont(...F.regular); doc.setFontSize(6.5); doc.setTextColor(150);
-    doc.text('Generated '+fmtDate(new Date()), M, PH - 6);
-    doc.text(p+' / '+pages, W - M, PH - 6, {align: 'right'});
+    doc.setFont(...F.regular); doc.setFontSize(6); doc.setTextColor(150);
+    doc.text('Generated '+fmtDate(new Date()), M, PH - 4.5);
+    if(pages > 1) doc.text(p+' / '+pages, W - M, PH - 4.5, {align: 'right'});
   }
+  return doc;
+}
+
+/** Shrink step by step until the whole roster fits on one page (stops at a still-readable size). */
+function buildOnePagePDF(){
+  let doc = null;
+  for(let k = 1; k >= 0.6; k = Math.round((k - 0.04) * 100) / 100){
+    doc = buildPDF(k);
+    if(doc.getNumberOfPages() === 1) return {doc, fit: true, scale: k};
+  }
+  return {doc, fit: false, scale: 0.6};
+}
+
+function exportPDF(){
+  const {doc, fit} = buildOnePagePDF();
+  if(!fit) log('This roster is too long to fit on one page at a readable size, so it continues onto page 2. Try Landscape, or hide some columns.', 'warn');
   doc.save(fileBase()+'.pdf');
+}
+
+/** Print the same one-page PDF (opens it in a new tab with the print dialog). */
+function printPDF(){
+  const {doc} = buildOnePagePDF();
+  doc.setProperties({title: fileBase()});
+  doc.autoPrint();
+  const url = doc.output('bloburl');
+  const w = window.open(url, '_blank');
+  if(!w){ // pop-up blocked: fall back to the browser's own page printing
+    const t = document.title; document.title = fileBase(); window.print(); document.title = t;
+  }
 }
 
 function exportCSV(){
@@ -903,7 +926,7 @@ function exportCSV(){
   $('modeSelect').onchange = e => loadSheet(e.target.value);
   $('pdfBtn').onclick = () => { try{ exportPDF(); }catch(err){ console.error(err); log('PDF export failed: '+err.message, 'err'); } };
   // The browser's "Save as PDF" uses the page title as the file name.
-  $('printBtn').onclick = () => { const t = document.title; document.title = fileBase(); window.print(); document.title = t; };
+  $('printBtn').onclick = () => { try{ printPDF(); }catch(err){ console.error(err); log('Print failed: '+err.message, 'err'); } };
   $('titleInput').addEventListener('change', () => {
     const m = S.model; if(!m || !m.staffId) return;
     const names = store.get('names', {}), v = $('titleInput').value.trim();

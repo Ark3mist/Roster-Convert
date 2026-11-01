@@ -16,7 +16,7 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
   - the home base is the most common departure station
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
 - **Times: Local (LT) or UTC**. Times are converted per station using each airport's time zone, including daylight saving, and duties move to their UTC date. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
-- Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**.
+- Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**. The PDF and Print shrink to fit **one page**: text gets smaller step by step, but never below a readable size. Statistics, code descriptions and public holidays sit side by side at the bottom. Print opens that same one-page PDF.
 - Downloaded files are named **`Name, Staff number, Month Year`**, e.g. `Shafiq Fakhri Othman, 2106537, November 2026.pdf`. Exports often cut names short, so type the full name in the title box once. It is remembered for that staff number.
 - Columns can be hidden. The code legend can be edited. Both are remembered on your device.
 
