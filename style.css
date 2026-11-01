@@ -104,6 +104,9 @@ tr.daystart td{border-top:1px solid var(--line)}
   table{font-size:7.5px;width:100%}
   th,td{white-space:normal;word-break:normal;overflow-wrap:normal}
   td.date{white-space:nowrap}
+  th,td{border:0}
+  th{border-bottom:1px solid #bbb}
+  tr.daystart td{border-top:2px solid #fff}
   th,td{padding:3px 4px}
   .legendRow input{border:0;padding:0;background:none}
   tr{break-inside:avoid}
