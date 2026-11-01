@@ -30,7 +30,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   - **Home base:** every time in home-base time (KUL, always UTC+8).
 
   Daylight saving is handled automatically. Duties move to the date they fall on in the chosen clock. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
-- Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**. The PDF and Print shrink to fit **one page**: text gets smaller step by step, but never below a readable size. Statistics, code descriptions and public holidays sit side by side at the bottom. Print opens that same one-page PDF.
+- Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**. The PDF and Print shrink to fit **one page**: text gets smaller step by step, but never below a readable size. A compact block at the bottom puts Statistics (in two columns), **Code** (code descriptions) and **PH** (public holidays) side by side. Print opens that same one-page PDF.
 - Downloaded files are named **`Name, Staff number, Month Year`**, e.g. `Shafiq Fakhri Othman, 2106537, November 2026.pdf`. Exports often cut names short, so type the full name in the title box once. It is remembered for that staff number.
 - Columns can be hidden. The code legend can be edited. Both are remembered on your device.
 

@@ -950,31 +950,41 @@ function buildPDF(scale = 1){
   });
   y = doc.lastAutoTable.finalY + 6 * k;
 
-  // Bottom block: Statistics | Code Description | Public Holidays side by side, to keep it on one page.
+  // Bottom block (compact): Statistics | Code | PH side by side, each only as wide as its content.
   const blocks = [];
-  if(m.stats.length) blocks.push(['Statistics', m.stats, null]);
+  if(m.stats.length){
+    // Statistics in two label/value pairs per line to halve the height.
+    const half = Math.ceil(m.stats.length / 2), rows = [];
+    for(let i = 0; i < half; i++) rows.push([...m.stats[i], ...(m.stats[i + half] || ['', ''])]);
+    blocks.push({title: 'Statistics', rows, stats: true});
+  }
   const legend = legendEntries();
-  if(legend.length) blocks.push(['Code Description', legend, null]);
+  if(legend.length) blocks.push({title: 'Code', rows: legend});
   if(m.kind === 'roster'){
-    const ph = holidaysInRange().map(([d, n]) => { const dt = new Date(d+'T00:00:00'); return [fmtDate(dt)+' '+DOW[dt.getDay()], n]; });
-    if(ph.length) blocks.push(['Public Holidays', ph, PINK]);
+    const ph = holidaysInRange().map(([d, n]) => { const dt = new Date(d+'T00:00:00'); return [String(dt.getDate()).padStart(2,'0')+' '+MON_UP[dt.getMonth()]+' '+DOW[dt.getDay()], n]; });
+    if(ph.length) blocks.push({title: 'PH', rows: ph, firstColor: PINK});
   }
   if(blocks.length){
-    const gap = 6, colW = (W - 2*M - gap * (blocks.length - 1)) / blocks.length;
-    let bottom = y;
-    blocks.forEach(([heading, rows, firstColor], i) => {
-      const x = M + i * (colW + gap);
-      doc.setFont(...F.medium); doc.setFontSize(8.5 * Math.max(k, 0.8)); doc.setTextColor(...INK);
-      doc.text(heading, x, y + 3 * k);
+    const gap = 5 * k, fs = 6.6 * k;
+    let x = M, bottom = y;
+    doc.setFont(...F.medium); doc.setFontSize(7.5 * Math.max(k, 0.8)); doc.setTextColor(...INK);
+    for(const b of blocks){
+      if(x > W - M - 20) break;
+      doc.setFont(...F.medium); doc.setFontSize(7.5 * Math.max(k, 0.8)); doc.setTextColor(...INK);
+      doc.text(b.title, x, y + 2.6 * k);
+      const valueCol = {font: F.medium[0], fontStyle: F.medium[1], halign: 'right', textColor: INK, cellPadding: {top: 0.35 * k, bottom: 0.35 * k, left: 0, right: 5 * k}};
       doc.autoTable({
-        startY: y + 4.5 * k, margin: {left: x, right: W - x - colW, top: 10, bottom: 10}, tableWidth: colW,
-        body: rows.map(r => r.map(pdfSafe)), theme: 'plain',
-        styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize: 7 * k, cellPadding: {top: 0.6 * k, bottom: 0.6 * k, left: 0, right: 3},
-                 textColor: INK, overflow: 'linebreak'},
-        columnStyles: {0: {cellWidth: 'wrap', textColor: firstColor || DIM}, 1: heading === 'Statistics' ? {font: F.medium[0], fontStyle: F.medium[1], halign: 'right'} : {}},
+        startY: y + 3.6 * k, margin: {left: x, right: 0, top: 10, bottom: 10}, tableWidth: 'wrap',
+        body: b.rows.map(r => r.map(pdfSafe)), theme: 'plain',
+        styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize: fs, cellPadding: {top: 0.35 * k, bottom: 0.35 * k, left: 0, right: 2.5 * k},
+                 textColor: INK, overflow: 'visible', cellWidth: 'wrap'},
+        columnStyles: b.stats ? {0: {textColor: DIM}, 1: valueCol, 2: {textColor: DIM}, 3: valueCol}
+                              : {0: {textColor: b.firstColor || DIM}},
       });
-      bottom = Math.max(bottom, doc.lastAutoTable.finalY);
-    });
+      const t = doc.lastAutoTable;
+      bottom = Math.max(bottom, t.finalY);
+      x += t.columns.reduce((a, c) => a + c.width, 0) + gap;
+    }
     y = bottom;
   }
 
