@@ -665,9 +665,9 @@ function exportPDF(){
   const F = pdfFont(doc);
   const W = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight(), M = 10;
   const INK = [17,17,17], DIM = [110,116,122];
-  const fills = {off:[236,247,214], layover:[237,233,254], duty:[219,234,254]};
-  const texts = {off:[47,74,0], layover:[91,33,182], duty:[30,58,138]};
-  const BLUE = [37,99,235], PINK_BG = [252,231,243], PINK = [190,24,93], ORANGE = [163,95,0];
+  // Font colour only — no background highlights anywhere.
+  const texts = {duty:[29,78,216], off:[63,120,0], layover:[109,40,217]};
+  const PINK = [219,39,119], ORANGE = [204,102,0];
   const H = holidays();
 
   // Title line: name in medium weight, details in grey beside / under it.
@@ -683,14 +683,12 @@ function exportPDF(){
   y += 5.5;
 
   if(m.kind === 'roster'){
-    const key = [['duty', 'Duty'], ['off', 'Off / Leave'], ['layover', 'Layover'], ['ph', 'Public holiday']];
+    const key = [[texts.duty, 'Duty'], [texts.off, 'Off / Leave'], [texts.layover, 'Layover'], [PINK, 'Public holiday'], [ORANGE, 'Weekend']];
     let x = M;
-    doc.setFontSize(6.8);
-    key.forEach(([k, label]) => {
-      doc.setFillColor(...(k === 'ph' ? PINK_BG : fills[k])); doc.rect(x, y - 2.4, 4.5, 3, 'F');
-      if(k === 'duty'){ doc.setFillColor(...BLUE); doc.rect(x, y - 2.4, 0.9, 3, 'F'); }
-      doc.setTextColor(...DIM); doc.text(label, x + 6, y);
-      x += 6 + doc.getTextWidth(label) + 6;
+    doc.setFont(...F.regular); doc.setFontSize(6.8);
+    key.forEach(([color, label]) => {
+      doc.setTextColor(...color); doc.text(label, x, y);
+      x += doc.getTextWidth(label) + 6;
     });
     y += 3.5;
   }
@@ -703,7 +701,7 @@ function exportPDF(){
     theme: 'plain',
     styles: {font: F.regular[0], fontStyle: F.regular[1], fontSize, cellPadding: {top: 1.05, bottom: 1.05, left: 1.4, right: 1.4},
              textColor: INK, overflow: 'linebreak', valign: 'top', lineWidth: 0},
-    headStyles: {font: F.medium[0], fontStyle: F.medium[1], fillColor: [241,243,245], textColor: [85,90,96], valign: 'bottom',
+    headStyles: {font: F.medium[0], fontStyle: F.medium[1], fillColor: false, textColor: [85,90,96], valign: 'bottom',
                  lineWidth: {bottom: 0.25}, lineColor: [190,195,200]},
     // Short columns never wrap (keeps "KUL 19:00" on one line); only long free text (hotel…) wraps.
     columnStyles: Object.fromEntries(cols.map((c, i) => {
@@ -714,21 +712,12 @@ function exportPDF(){
       if(data.section !== 'body') return;
       const row = m.rows[data.row.index], st = data.cell.styles;
       const k = ['off', 'layover', 'duty'].find(c => row.cls.includes(c));
-      if(k){ st.fillColor = fills[k]; st.textColor = texts[k]; }
+      if(k) st.textColor = texts[k];
       const isDate = cols[data.column.index].key === 'date';
       if(isDate && row.cls.includes('weekend')) st.textColor = ORANGE;
-      if(isDate && row.ymd && H[row.ymd]){ st.fillColor = PINK_BG; st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
-      // No row lines: a thin white gap separates days so back-to-back duty days stay distinct.
-      if(row.cls.includes('daystart') && data.row.index > 0){ st.lineWidth = {top: 0.7}; st.lineColor = [255,255,255]; }
-    },
-    didDrawCell: data => {
-      if(data.section !== 'body' || data.column.index !== 0) return;
-      const row = m.rows[data.row.index];
-      if(row.cls.includes('duty')){
-        const top = row.cls.includes('daystart') && data.row.index > 0 ? 0.35 : 0;
-        doc.setFillColor(...BLUE);
-        doc.rect(data.cell.x, data.cell.y + top, 1, data.cell.height - top, 'F');
-      }
+      if(isDate && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
+      // No lines or fills: a little extra space above each new day keeps days apart.
+      if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: 1.9, bottom: 1.05, left: 1.4, right: 1.4};
     },
   });
   y = doc.lastAutoTable.finalY + 8;

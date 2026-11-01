@@ -4,7 +4,7 @@
   --warn:#ffb454; --err:#ff6b6b; --ok:#6bffb0;
   --off-bg:#1f2a12; --off-text:#c6ff3d;
   --lo-bg:#1d1b3d; --lo-text:#c4b5fd;
-  --duty-bg:#0f1e3a; --duty-text:#bcd4ff; --duty-line:#3b82f6;
+  --duty-text:#7fb2ff;
   --ph-bg:#4a1033; --ph-text:#ff8cc6;
   --mono:'DM Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
 }
@@ -59,12 +59,11 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-
 th{background:var(--panel2);color:var(--dim);font-weight:500;font-size:11px;position:sticky;top:0}
 td.num{text-align:right}
 td.date{color:var(--dim)}
-tr.off td{background:var(--off-bg);color:var(--off-text)}
-tr.layover td{background:var(--lo-bg);color:var(--lo-text)}
-tr.duty td{background:var(--duty-bg);color:var(--duty-text)}
-tr.duty td:first-child{box-shadow:inset 4px 0 0 var(--duty-line)}
+tr.off td{color:var(--off-text)}
+tr.layover td{color:var(--lo-text)}
+tr.duty td{color:var(--duty-text)}
 tr.weekend td.date{color:var(--warn)}
-tr.holiday td.date{background:var(--ph-bg);color:var(--ph-text);font-weight:500;cursor:help}
+tr.holiday td.date{color:var(--ph-text);font-weight:500;cursor:help}
 .phDate{color:var(--ph-text);width:17ch;flex:none;align-self:center;font-size:12px}
 .phName{flex:1;align-self:center;font-size:12px}
 .legendRow.empty{color:var(--dim);font-size:12px}
@@ -94,7 +93,7 @@ tr.daystart td{border-top:1px solid var(--line)}
 
 @media print{
   @page{margin:10mm}
-  :root{--bg:#fff;--panel:#fff;--panel2:#f1f3f5;--line:#ccc;--text:#111;--dim:#555;--off-bg:#eef7dc;--off-text:#2f4a00;--lo-bg:#ede9fe;--lo-text:#5b21b6;--duty-bg:#dbeafe;--duty-text:#1e3a8a;--duty-line:#2563eb;--ph-bg:#fce7f3;--ph-text:#be185d;--warn:#a35f00}
+  :root{--bg:#fff;--panel:#fff;--panel2:#f1f3f5;--line:#ccc;--text:#111;--dim:#555;--off-bg:#eef7dc;--off-text:#2f4a00;--lo-bg:#ede9fe;--lo-text:#5b21b6;--duty-bg:#dbeafe;--duty-text:#1e3a8a;--duty-line:#2563eb;--ph-bg:#fce7f3;--ph-text:#be185d;--warn:#cc6600;--duty-text:#1d4ed8;--off-text:#3f7800;--lo-text:#6d28d9;--ph-text:#db2777}
   tr td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header,footer,#drop,#status,#log,.toolbar,#columnsPanel,.btnRow,.legendRow button{display:none !important}
   main{padding:0;max-width:none}
