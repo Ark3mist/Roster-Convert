@@ -16,14 +16,18 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   - the home base is the most common departure station
 - **Roster Report PDF:** the text is read with pdf.js, including rotated pages and wrapped cells, and rebuilt into the same table as the Excel export, so the result is identical.
 - **Roster Report web page (.html)**, saved from the crew portal: the table is read as plain data (no scripts run), with colspan/rowspan and multi-page tables handled.
-- **File times: Auto-detect / Home base / UTC** lets you override the detection described in the next point, e.g. for a UTC file with no days off.
-- **UTC exports are detected automatically.** Some versions (such as the portal's web page) give times in UTC without saying so. Days off then run 16:00–15:59 instead of 00:00–23:59 (for KUL), and the app converts the times accordingly. Days off are always shown as home-base calendar days.
+- **File times: Auto-detect / Home base (KUL, UTC+8) / UTC / Station local** sets which clock the uploaded file uses. Auto-detect works it out:
+  - **Station local**: on flights between different time zones, arrival minus departure differs from the block time by exactly the zone difference (e.g. MH727 KUL 22:35 → CGK 23:45 is 1:10 for a 2:10 block, because CGK is UTC+7).
+  - **UTC**: days off run 16:00–15:59 (for KUL) instead of 00:00–23:59. The portal's web page uses UTC.
+  - **Home base**: otherwise, as in the Excel and PDF Roster Report.
+
+  A note on the page says what was detected. Days off are always shown as home-base calendar days.
 - **Roster calendar (.ics):** duty periods ("Report time …"), flights ("MH 020 KUL - CDG") and all-day leave/off events are turned into the same table. Calendar files have no aircraft, rank, work type, duty code or crew name. Block hours are calculated from the scheduled flight times, so augmented sectors show full flight time, not credited hours.
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
 - **Times: Station local, UTC, or Home base.** The crew Roster Report gives every station's times in home-base time (London departures in KUL time, for example). The app converts them:
   - **Station local (LT):** each time in that airport's own local time. Report times use the departure station and debrief times the arrival station.
   - **UTC:** one universal clock for every station.
-  - **Home base (as exported):** the times unchanged, as in the export.
+  - **Home base:** every time in home-base time (KUL, always UTC+8).
 
   Daylight saving is handled automatically. Duties move to the date they fall on in the chosen clock. Off and leave days stay on their date. If a station isn't in the built-in list, the app warns you and uses the home base's zone.
 - Exports: **Download PDF** (A4 or Letter, portrait, landscape or auto), **Print**, **CSV**. The PDF and Print shrink to fit **one page**: text gets smaller step by step, but never below a readable size. Statistics, code descriptions and public holidays sit side by side at the bottom. Print opens that same one-page PDF.

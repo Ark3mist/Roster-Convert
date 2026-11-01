@@ -10,11 +10,11 @@
      (no fetch/XHR/beacons, no form posts) and only loads files from this site. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<link rel="stylesheet" href="style.css?v=2026.11.01-9">
-<script src="vendor/xlsx.full.min.js?v=2026.11.01-9"></script>
-<script src="vendor/jspdf.umd.min.js?v=2026.11.01-9"></script>
-<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-9"></script>
-<script src="vendor/fonts/dmmono.js?v=2026.11.01-9"></script>
+<link rel="stylesheet" href="style.css?v=2026.11.01-10">
+<script src="vendor/xlsx.full.min.js?v=2026.11.01-10"></script>
+<script src="vendor/jspdf.umd.min.js?v=2026.11.01-10"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-10"></script>
+<script src="vendor/fonts/dmmono.js?v=2026.11.01-10"></script>
 </head>
 <body>
 <header>
@@ -64,15 +64,16 @@
     <label class="opt" id="srcPick" title="Which clock the uploaded file uses. Auto works it out from the days off.">File times
       <select id="srcSelect">
         <option value="auto">Auto-detect</option>
-        <option value="base">Home base (KUL)</option>
+        <option value="base">Home base (KUL, UTC+8)</option>
         <option value="utc">UTC</option>
+        <option value="local">Station local</option>
       </select>
     </label>
     <label class="opt" id="timePick">Show times
       <select id="timeSelect">
         <option value="local">Station local (LT)</option>
         <option value="utc">UTC</option>
-        <option value="base">Home base (as exported)</option>
+        <option value="base">Home base (KUL, UTC+8)</option>
       </select>
     </label>
     <label class="opt">Page
@@ -137,7 +138,7 @@
 
 <footer>Roster Convert · your file never leaves this device · version <span id="appVersion"></span></footer>
 
-<script src="importers.js?v=2026.11.01-9"></script>
-<script src="app.js?v=2026.11.01-9"></script>
+<script src="importers.js?v=2026.11.01-10"></script>
+<script src="app.js?v=2026.11.01-10"></script>
 </body>
 </html>

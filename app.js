@@ -190,6 +190,7 @@ const STATION_TZ = (() => {
 const tzFmtCache = {};
 /** Offset (minutes east of UTC) of `zone` at the instant `utcMs`. */
 function tzOffset(zone, utcMs){
+  utcMs = Math.floor(utcMs / 60000) * 60000;          // whole minutes, so seconds can't skew the result
   const f = tzFmtCache[zone] ||= new Intl.DateTimeFormat('en-US', {timeZone: zone, hourCycle: 'h23',
     year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'});
   const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x => [x.type, x.value]));
@@ -253,7 +254,43 @@ function detectUtcExport(legs, home){
   const utcLike = offs.filter(l => l.depTime === utcStart).length;
   return utcLike > offs.length / 2 ? 'utc' : 'base';
 }
-const TIME_LABEL = {local: 'All times station local (LT)', utc: 'All times UTC', base: home => 'All times '+(home || 'home base')+' (as exported)'};
+/**
+ * Station-local exports give each airport's own local time. Tell-tale: on a flight between
+ * airports in different time zones, arrival − departure ≠ block time, and the gap equals the
+ * zone difference (MH727 KUL 22:35 → CGK 23:45 = 1:10 for a 2:10 block, CGK being −1h).
+ * In home-base or UTC exports both ends use one clock, so arrival − departure = block.
+ * Returns {same, local}: vote counts over flights that can tell the two apart.
+ */
+function clockVotes(legs, home){
+  const baseZ = STATION_TZ[home] || 'Asia/Kuala_Lumpur';
+  const zoneOf = stn => STATION_TZ[(stn || '').toUpperCase()] || baseZ;
+  const at = (d, t) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ''); return d && m ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), +m[1], +m[2]) : null; };
+  let same = 0, local = 0;
+  for(const l of legs){
+    if(!l.isFlight || isOffCode(l.item)) continue;
+    const dep = at(l.depDate, l.depTime), arr = at(l.arrDate, l.arrTime), block = durToMin(l.fly);
+    if(dep == null || arr == null || !block) continue;
+    const delta = tzOffset(zoneOf(l.arrStn), dep) - tzOffset(zoneOf(l.depStn), dep);   // minutes
+    if(!delta) continue;                                   // same zone at both ends: can't tell
+    const elapsed = Math.round((arr - dep) / 60000);
+    if(Math.abs(elapsed - block) <= 5) same++;
+    else if(Math.abs(elapsed - (block + delta)) <= 5) local++;
+    // anything else (e.g. credited hours on augmented sectors) gives no vote
+  }
+  return {same, local};
+}
+
+/** Work out the file's clock when its header doesn't say: station local, UTC or home base. */
+function detectClock(legs, home){
+  const v = clockVotes(legs, home);
+  if(v.local > v.same) return {clock: 'local', why: 'flight times differ from block hours by the airport time-zone difference'};
+  if(detectUtcExport(legs, home) === 'utc') return {clock: 'utc', why: 'days off run '+utcMidnightOf(home, legs)+'–'+utcMidnightOf(home, legs, true)+' instead of 00:00–23:59'};
+  return {clock: 'base', why: ''};
+}
+
+const utcOffsetLabel = zone => { const m = tzOffset(zone, Date.now()); return 'UTC'+(m >= 0 ? '+' : '-')+Math.floor(Math.abs(m)/60)+(Math.abs(m)%60 ? ':'+String(Math.abs(m)%60).padStart(2,'0') : ''); };
+const TIME_LABEL = {local: 'All times station local (LT)', utc: 'All times UTC',
+  base: home => 'All times '+(home || 'home base')+' ('+utcOffsetLabel(STATION_TZ[home] || 'Asia/Kuala_Lumpur')+')'};
 const timeLabel = (mode, home) => mode === 'base' ? TIME_LABEL.base(home) : TIME_LABEL[mode];
 
 /* ------------------------------------------------------------------ *
@@ -401,8 +438,12 @@ function buildRosterModel(ws){
   const home = guessHome(legs, meta);
   // File clock: chosen by the user, or worked out (header label, then days-off pattern).
   const srcChoice = $('srcSelect').value;
-  const srcTime = srcChoice !== 'auto' ? srcChoice : parsed.srcTime === 'base' ? detectUtcExport(legs, home) : parsed.srcTime;
-  if(srcChoice === 'auto' && srcTime === 'utc' && parsed.srcTime !== 'utc') S.warnings.push('This file\'s times are in UTC (detected from the days off running '+utcMidnightOf(home, legs)+'–'+utcMidnightOf(home, legs, true)+' instead of 00:00–23:59). They have been converted accordingly.');
+  let srcTime = srcChoice !== 'auto' ? srcChoice : parsed.srcTime;
+  if(srcChoice === 'auto' && parsed.srcTime === 'base'){
+    const d = detectClock(legs, home);
+    srcTime = d.clock;
+    if(d.why) S.warnings.push('This file\'s times are '+(d.clock === 'utc' ? 'in UTC' : 'already in each airport\'s local time')+' (detected: '+d.why+'). They have been read accordingly. If that\'s wrong, change "File times".');
+  }
   const timeMode = $('timeSelect').value;
   const unknownStations = convertLegs(legs, srcTime, timeMode, home);
   if(unknownStations.length) S.warnings.push('No time zone known for '+unknownStations.join(', ')+' — times there were converted using the home base ('+home+') zone. Tell the developer to add them.');
