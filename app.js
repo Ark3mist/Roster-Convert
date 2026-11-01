@@ -908,8 +908,13 @@ function buildPDF(scale = 1){
   let y = 9 + 5 * k;
   const title = pdfSafe($('titleInput').value || m.title);
   doc.setFont(...F.medium); doc.setFontSize(12 * Math.max(k, 0.8)); doc.setTextColor(...INK);
-  doc.text(title, M, y);
-  const tw = doc.getTextWidth(title);
+  // Theme badge (if any) just before the name, sized to the title's cap height.
+  const capH = doc.getFontSize() * 0.3528 * 0.8, bsz = BADGES[$('themeSelect').value] ? capH * 1.35 : 0;
+  if(bsz) drawBadgePDF(doc, $('themeSelect').value, M, y - capH - (bsz - capH) / 2, bsz);
+  const tx = M + (bsz ? bsz + 2 : 0);
+  doc.setTextColor(...INK);
+  doc.text(title, tx, y);
+  const tw = doc.getTextWidth(title) + (tx - M);
   doc.setFont(...F.regular); doc.setFontSize(8 * Math.max(k, 0.8)); doc.setTextColor(...DIM);
   const subText = pdfSafe(m.subtitle);
   if(tw + 4 + doc.getTextWidth(subText) <= W - 2*M) doc.text(subText, M + tw + 4, y);
@@ -1049,6 +1054,42 @@ const THEMES = {
               bg: [240,240,238],  ink: [17,17,17],  dim: [100,100,100], head: [40,40,40],   rule: [215,24,42],
               duty: [0,62,165],   off: [0,140,60],   layover: [115,35,150], ph: [215,24,42],  weekend: [235,100,0],  hilite: [255,214,0], hiliteInk: [17,17,17], footer: [140,140,140]},
 };
+/* Original 8×8 pixel-art badges for the themed palettes (not the brands' logos, which are trademarks). */
+const BADGES = {
+  f1: {colors: {K: [21,21,30], W: [255,255,255], R: [225,6,0]}, rows: [        // chequered flag
+    'RKWKWKW.', 'RWKWKWK.', 'RKWKWKW.', 'RWKWKWK.', 'R.......', 'R.......', 'R.......', 'R.......']},
+  motogp: {colors: {R: [215,24,42], W: [255,255,255], D: [30,34,44], K: [60,60,60]}, rows: [   // racing helmet
+    '..RRRR..', '.RRWWRR.', 'RRWRRRRR', 'RDDDDDRR', 'RDDDDDRR', 'RRRRRRRR', '.RRRRRW.', '..KKKK..']},
+  minecraft: {colors: {G: [93,158,63], g: [126,190,84], B: [134,96,67], b: [100,70,48]}, rows: [  // grass block
+    'GgGGgGGg', 'GGgGGGgG', 'gGbGGbGG', 'BBBbBBBB', 'BbBBBBbB', 'BBBBbBBB', 'BBbBBBBb', 'bBBBBbBB']},
+  roblox: {colors: {Y: [245,205,48], K: [27,42,53]}, rows: [                   // blocky smiley head
+    'YYYYYYYY', 'YYYYYYYY', 'YKKYYKKY', 'YKKYYKKY', 'YYYYYYYY', 'YKYYYYKY', 'YYKKKKYY', 'YYYYYYYY']},
+};
+/** Draw a badge into a jsPDF doc at (x, y) with the given size in mm. */
+function drawBadgePDF(doc, id, x, y, size){
+  const b = BADGES[id]; if(!b) return 0;
+  const px = size / 8;
+  b.rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    const col = b.colors[ch]; if(!col) return;
+    doc.setFillColor(...col); doc.rect(x + c * px, y + r * px, px + 0.02, px + 0.02, 'F');
+  }));
+  return size;
+}
+/** Same badge as an inline SVG element for the page. */
+function badgeSVG(id, sizePx){
+  const b = BADGES[id]; if(!b) return null;
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 8 8'); svg.setAttribute('width', sizePx); svg.setAttribute('height', sizePx);
+  svg.setAttribute('shape-rendering', 'crispEdges'); svg.setAttribute('aria-hidden', 'true'); svg.classList.add('themeBadge');
+  b.rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    const col = b.colors[ch]; if(!col) return;
+    const rect = document.createElementNS(NS, 'rect');
+    rect.setAttribute('x', c); rect.setAttribute('y', r); rect.setAttribute('width', 1); rect.setAttribute('height', 1);
+    rect.setAttribute('fill', 'rgb('+col.join(',')+')'); svg.appendChild(rect);
+  }));
+  return svg;
+}
+
 const currentTheme = () => THEMES[$('themeSelect') ? $('themeSelect').value : 'default'] || THEMES.default;
 
 /** Mirror the PDF theme on the on-screen roster (default keeps the app's own dark styling). */
@@ -1057,6 +1098,9 @@ function applyScreenTheme(){
   const vars = ['--panel','--panel2','--text','--dim','--line','--duty-text','--off-text','--lo-text','--ph-text','--warn','--rpt-bg','--rpt-text'];
   vars.forEach(v => area.style.removeProperty(v));
   area.style.fontFamily = T.font ? T.font.css : '';
+  const slot = $('themeLogo'); slot.innerHTML = '';
+  const svg = badgeSVG(id, 18); if(svg) slot.appendChild(svg);
+  slot.hidden = !svg;
   loadThemeFont(T).catch(() => {});
   if(id === 'default') return;
   const rgb = a => 'rgb('+a.join(',')+')';

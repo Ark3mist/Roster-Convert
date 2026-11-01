@@ -10,11 +10,11 @@
      (no fetch/XHR/beacons, no form posts) and only loads files from this site. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<link rel="stylesheet" href="style.css?v=2026.11.01-18">
-<script src="vendor/xlsx.full.min.js?v=2026.11.01-18"></script>
-<script src="vendor/jspdf.umd.min.js?v=2026.11.01-18"></script>
-<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-18"></script>
-<script src="vendor/fonts/dmmono.js?v=2026.11.01-18"></script>
+<link rel="stylesheet" href="style.css?v=2026.11.01-19">
+<script src="vendor/xlsx.full.min.js?v=2026.11.01-19"></script>
+<script src="vendor/jspdf.umd.min.js?v=2026.11.01-19"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=2026.11.01-19"></script>
+<script src="vendor/fonts/dmmono.js?v=2026.11.01-19"></script>
 </head>
 <body>
 <header>
@@ -113,6 +113,7 @@
   <div id="printArea">
     <section class="card" id="outCard" hidden>
       <h2>
+        <span id="themeLogo" class="themeLogo" hidden></span>
         <input id="titleInput" class="titleInput" value="Daily Roster" aria-label="Roster title">
         <small id="rangeLbl"></small>
       </h2>
@@ -149,7 +150,7 @@
 
 <footer>Roster Convert by LipasTerbang · your file never leaves this device · version <span id="appVersion"></span></footer>
 
-<script src="importers.js?v=2026.11.01-18"></script>
-<script src="app.js?v=2026.11.01-18"></script>
+<script src="importers.js?v=2026.11.01-19"></script>
+<script src="app.js?v=2026.11.01-19"></script>
 </body>
 </html>
