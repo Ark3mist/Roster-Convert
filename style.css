@@ -1,13 +1,13 @@
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/pixelify-400.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:500 700;font-display:swap;src:url(vendor/fonts/pixelify-600.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/montserrat-500.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/montserrat-700.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Titillium Web';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/titillium-400.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Titillium Web';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/titillium-700.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/barlowcond-500.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/barlowcond-700.woff2?v=2026.11.01-17) format('woff2')}
-@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-17) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/dm-mono-400.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/pixelify-400.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:500 700;font-display:swap;src:url(vendor/fonts/pixelify-600.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/montserrat-500.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/montserrat-700.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Titillium Web';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/titillium-400.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Titillium Web';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/titillium-700.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:400 500;font-display:swap;src:url(vendor/fonts/barlowcond-500.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600 800;font-display:swap;src:url(vendor/fonts/barlowcond-700.woff2?v=2026.11.01-18) format('woff2')}
+@font-face{font-family:'DM Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/dm-mono-500.woff2?v=2026.11.01-18) format('woff2')}
 :root{
   --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#2a2e33;
   --text:#f2f3f5; --dim:#aeb4bb; --accent:#c6ff3d; --accent-ink:#0b0c0e;
@@ -47,6 +47,13 @@ select{padding:6px 8px}
 #fileInput{display:none}
 .privacy{margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--ok);border-radius:0 10px 10px 0;background:var(--panel);font-size:12px;color:var(--dim)}
 .privacyHead{color:var(--ok);font-weight:500;font-size:12.5px;margin-bottom:6px}
+/* Gentle "blink" (slow pulse + glow) on the privacy promise until a roster is loaded.
+   Slow (1.8 s), never a hard flash, and off for people who ask for reduced motion. */
+.privacyHead.blink{animation:privacyPulse 1.8s ease-in-out infinite}
+.privacy:has(.blink){animation:privacyBorder 1.8s ease-in-out infinite}
+@keyframes privacyPulse{0%,100%{opacity:1;text-shadow:0 0 6px rgba(107,255,176,.55)}50%{opacity:.35;text-shadow:none}}
+@keyframes privacyBorder{0%,100%{border-left-color:var(--ok)}50%{border-left-color:var(--line)}}
+@media (prefers-reduced-motion: reduce){.privacyHead.blink,.privacy:has(.blink){animation:none}}
 .privacy ul{margin:0;padding-left:18px}
 .privacy li{margin:4px 0;line-height:1.5}
 .privacy b{color:var(--text);font-weight:500}

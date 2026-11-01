@@ -38,6 +38,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
 
 ## Privacy
 
+- The privacy notice under the upload box pulses gently until a roster is loaded. It doesn't pulse for users who have reduced motion switched on.
 - The roster file is read and converted **in the browser only**. It is never uploaded, sent or stored on a server.
 - A Content-Security-Policy (`connect-src 'none'`, `form-action 'none'`, `default-src 'self'`) makes the browser block any attempt by the page to send data. All fonts and libraries are served from this site; there are no third-party requests.
 - The roster is held in memory only and cleared when the page is refreshed or closed.

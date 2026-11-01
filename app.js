@@ -776,6 +776,7 @@ function render(){
  * ------------------------------------------------------------------ */
 async function handleFile(file){
   clearLog();
+  $('privacyHead').classList.remove('blink');   // stop drawing attention once a roster is open
   S.file = file;
   $('status').hidden = false;
   $('fileNameLbl').textContent = file.name;
