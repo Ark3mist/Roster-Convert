@@ -992,7 +992,7 @@ function buildPDF(scale = 1){
   for(let p = 1; p <= pages; p++){
     doc.setPage(p);
     doc.setFont(...F.regular); doc.setFontSize(6); doc.setTextColor(150);
-    doc.text('Generated '+fmtDate(new Date()), M, PH - 4.5);
+    doc.text('Generated '+fmtDate(new Date())+'  ·  by LipasTerbang', M, PH - 4.5);
     if(pages > 1) doc.text(p+' / '+pages, W - M, PH - 4.5, {align: 'right'});
   }
   return doc;
