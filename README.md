@@ -16,6 +16,7 @@ Upload a roster as a spreadsheet (`.xlsx`, `.xls`, `.csv`), the Roster Report **
   - the home base is the most common departure station
 - **Roster Report PDF:** the text is read with pdf.js, including rotated pages and wrapped cells, and rebuilt into the same table as the Excel export, so the result is identical.
 - **Roster Report web page (.html)**, saved from the crew portal: the table is read as plain data (no scripts run), with colspan/rowspan and multi-page tables handled.
+- **File times: Auto-detect / Home base / UTC** lets you override the detection described in the next point, e.g. for a UTC file with no days off.
 - **UTC exports are detected automatically.** Some versions (such as the portal's web page) give times in UTC without saying so. Days off then run 16:00–15:59 instead of 00:00–23:59 (for KUL), and the app converts the times accordingly. Days off are always shown as home-base calendar days.
 - **Roster calendar (.ics):** duty periods ("Report time …"), flights ("MH 020 KUL - CDG") and all-day leave/off events are turned into the same table. Calendar files have no aircraft, rank, work type, duty code or crew name. Block hours are calculated from the scheduled flight times, so augmented sectors show full flight time, not credited hours.
 - **Any other spreadsheet** is converted to a PDF table as-is (you can pick the sheet).
@@ -47,6 +48,9 @@ python3 -m http.server 8000
 Then open http://localhost:8000.
 
 ### Publish on GitHub Pages
+
+When releasing a change, bump `APP_VERSION` in `importers.js` and the `?v=` on the asset URLs in `index.html` and `style.css`. Browsers then load the new files instead of cached ones. The version is shown in the page footer.
+
 
 Repo **Settings → Pages → Deploy from a branch**, then choose the branch and `/ (root)`.
 

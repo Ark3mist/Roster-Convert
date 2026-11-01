@@ -4,6 +4,9 @@
    Everything runs locally; pdf.js is loaded from this site only when a PDF is opened. */
 'use strict';
 
+/** Bump on every release: added to file URLs so browsers fetch the new version instead of a cached one. */
+const APP_VERSION = '2026.11.01-6';
+
 /* ------------------------------------------------------------------ *
  *  PDF → array-of-arrays (same layout as the Excel Roster Report)
  * ------------------------------------------------------------------ */
@@ -11,8 +14,8 @@ let pdfjsReady = null;
 function loadPdfJs(){
   return pdfjsReady ||= new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = 'vendor/pdf.min.js';
-    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js'; resolve(window.pdfjsLib); };
+    s.src = 'vendor/pdf.min.js?v='+APP_VERSION;
+    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js?v='+APP_VERSION; resolve(window.pdfjsLib); };
     s.onerror = () => { pdfjsReady = null; reject(new Error('PDF reader failed to load')); };
     document.head.appendChild(s);
   });

@@ -393,8 +393,10 @@ function buildRosterModel(ws){
   const {rows, meta} = parsed;
   const legs = rowsToLegs(rows);
   const home = guessHome(legs, meta);
-  const srcTime = parsed.srcTime === 'base' ? detectUtcExport(legs, home) : parsed.srcTime;
-  if(srcTime === 'utc' && parsed.srcTime !== 'utc') S.warnings.push('This file\'s times are in UTC (detected from the days off running '+utcMidnightOf(home, legs)+'–'+utcMidnightOf(home, legs, true)+' instead of 00:00–23:59). They have been converted accordingly.');
+  // File clock: chosen by the user, or worked out (header label, then days-off pattern).
+  const srcChoice = $('srcSelect').value;
+  const srcTime = srcChoice !== 'auto' ? srcChoice : parsed.srcTime === 'base' ? detectUtcExport(legs, home) : parsed.srcTime;
+  if(srcChoice === 'auto' && srcTime === 'utc' && parsed.srcTime !== 'utc') S.warnings.push('This file\'s times are in UTC (detected from the days off running '+utcMidnightOf(home, legs)+'–'+utcMidnightOf(home, legs, true)+' instead of 00:00–23:59). They have been converted accordingly.');
   const timeMode = $('timeSelect').value;
   const unknownStations = convertLegs(legs, srcTime, timeMode, home);
   if(unknownStations.length) S.warnings.push('No time zone known for '+unknownStations.join(', ')+' — times there were converted using the home base ('+home+') zone. Tell the developer to add them.');
@@ -516,7 +518,7 @@ function buildRosterModel(ws){
     staffId: meta ? (meta.details.find(d => /^\d{4,}$/.test(d)) || '') : '',
     monthLabel: MONTH_FULL[mainKey % 12]+' '+Math.floor(mainKey/12),
     subtitle: [meta ? meta.details.join(' · ') : '', fmtDate(minD)+' to '+fmtDate(maxD), timeLabel(timeMode, home)].filter(Boolean).join(' · '),
-    timeMode, home,
+    timeMode, home, srcTime,
     columns: ROSTER_COLUMNS,
     rows: out,
     stats: [
@@ -757,12 +759,14 @@ function loadSheet(preferredMode){
   $('modePick').hidden = !S.rosterOK;
   $('modeSelect').value = S.mode;
   $('timePick').hidden = S.mode !== 'roster';
+  $('srcPick').hidden = S.mode !== 'roster';
   S.warnings = [];
   try{
     if(S.mode === 'roster'){
       S.model = buildRosterModel(ws);
       setBadge(S.source === 'pdf' ? 'Crew roster · PDF' : S.source === 'ics' ? 'Crew roster · calendar' : S.source === 'html' ? 'Crew roster · web page' : 'Crew roster', true);
-      log('Parsed '+S.model.stats[0][1]+' days, '+timeLabel(S.model.timeMode, S.model.home).replace('All times', 'times')+'. Check the table, then press Download PDF.', 'ok');
+      const srcName = {base: (S.model.home || 'home base')+' time', utc: 'UTC', local: 'station local time'}[S.model.srcTime];
+      log('Parsed '+S.model.stats[0][1]+' days. File times read as '+srcName+'; showing '+timeLabel(S.model.timeMode, S.model.home).replace('All times ', '')+'. Check the table, then press Download PDF.', 'ok');
       if(S.source === 'ics') log('Calendar files don\'t include aircraft, rank, work type or duty codes, and Block Hrs here are the scheduled flight times (credited hours for augmented crew can be lower). Use the Excel export for exact figures.', 'warn');
       S.warnings.forEach(w => log(w, 'warn'));
     } else {
@@ -995,6 +999,8 @@ function exportCSV(){
   };
   $('addHolidayBtn').onclick = addHoliday;
   $('timeSelect').value = store.get('timeSelect', 'local');
+  $('appVersion').textContent = APP_VERSION;
+  $('srcSelect').onchange = () => { if(S.wb && S.mode === 'roster') loadSheet('roster'); };
   $('timeSelect').onchange = e => { store.set('timeSelect', e.target.value); if(S.wb && S.mode === 'roster') loadSheet('roster'); };
   ['orientSelect', 'paperSelect'].forEach(id => {
     const el = $(id); el.value = store.get(id, el.value);
