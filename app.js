@@ -386,7 +386,10 @@ function buildRosterModel(ws){
     const sameDay = ymd(l.depDate) === ymd(l.arrDate);
     // report the evening before a just-after-midnight departure
     if(l.repDate && dayDiff(l.repDate, l.depDate) > 0){
-      dayOf(l.repDate).rows.push({start: l.repTime, item: l.item, rank:'', dep:'', arr:'', end:'', work:'', block:'', duty:'', code:'', ac:'', hotel:''});
+      // Flagged so it can't be overlooked: the classic missed report (evening before an after-midnight departure).
+      const n = dayDiff(l.repDate, l.depDate);
+      dayOf(l.repDate).rows.push({start: l.repTime, item: l.item, rank:'', dep: '> dep '+(n === 1 ? 'next day' : '+'+n+' days'),
+        arr:'', end:'', work:'', block:'', duty:'', code:'', ac:'', hotel:'', earlyRpt: true});
     }
     const showRep = l.repDate && ymd(l.repDate) === ymd(l.depDate);
     dayOf(l.depDate).rows.push(Object.assign({}, base, {
@@ -444,9 +447,11 @@ function buildRosterModel(ws){
       else if(ri === 0 && r.item === 'LO') cls.push('layover');
       else if(isDutyRow(r)) cls.push('duty');
       if(weekend) cls.push('weekend');
+      if(r.earlyRpt) cls.push('earlyrpt');
       out.push({cls, ymd: ri === 0 ? ymd(c) : '', cells: {
         date: ri === 0 ? fmtDate(c) : '', dow: ri === 0 ? DOW[c.getDay()] : '',
-        start: r.start || '', item: r.item || '', rank: r.rank || '', dep: r.dep || '', arr: r.arr || '',
+        // "RPT" prefix on every real report time (not on off/leave rows, where 00:00 means nothing).
+        start: r.start ? (isOffCode(r.item) ? r.start : 'RPT '+r.start) : '', item: r.item || '', rank: r.rank || '', dep: r.dep || '', arr: r.arr || '',
         end: r.end || '', work: r.work || '', block: r.block || '', duty: r.duty || '', code: r.code || '',
         ac: r.ac || '', hotel: r.hotel || '',
       }});
@@ -561,7 +566,8 @@ function renderTable(){
       td.textContent = r.cells[c.key] || '';
       if(c.num) td.className = 'num';
       if(c.key === 'date'){ td.className = 'date'; if(ph) td.title = ph; }
-      if(c.key === 'start') td.className = 'start';
+      if(c.key === 'start' && !r.cls.includes('off')) td.className = 'start';
+      if(c.key === 'dep' && r.cls.includes('earlyrpt')) td.className = 'earlynote';
       tr.appendChild(td);
     });
     frag.appendChild(tr);
@@ -807,7 +813,10 @@ function exportPDF(){
       if(isDate && row.cls.includes('weekend')) st.textColor = ORANGE;
       if(isDate && row.ymd && H[row.ymd]){ st.textColor = PINK; st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
       // Duty Start (report time) is the time crew most often miss: always bold.
-      if(cols[data.column.index].key === 'start'){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; }
+      // Bold, black and one size up so it stands out from the blue duty times.
+      const key = cols[data.column.index].key;
+      if(key === 'start' && data.cell.raw && !row.cls.includes('off')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; st.fontSize = fontSize + 1; }
+      if(key === 'dep' && row.cls.includes('earlyrpt')){ st.font = F.medium[0]; st.fontStyle = F.medium[1]; st.textColor = INK; }
       // No lines or fills: a little extra space above each new day keeps days apart.
       if(row.cls.includes('daystart') && data.row.index > 0) st.cellPadding = {top: 1.9, bottom: 1.05, left: 1.4, right: 1.4};
     },
