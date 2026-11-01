@@ -1039,6 +1039,14 @@ const THEMES = {
   roblox:    {name: 'Roblox',          font: {family: 'Montserrat', global: 'FONT_MONTSERRAT', src: 'vendor/fonts/montserrat.js', css: "'Montserrat', sans-serif"},
               bg: null,           ink: [27,42,53],  dim: [99,95,98],    head: [99,95,98],   rule: [163,162,165],
               duty: [13,105,172], off: [75,151,75],  layover: [107,50,124], ph: [196,40,28],  weekend: [218,133,65], hilite: [245,205,48], hiliteInk: [27,42,53], footer: [163,162,165]},
+  // F1: black/red with F1 timing-screen colours (purple = fastest lap, green = personal best, yellow flag).
+  f1:        {name: 'F1',              font: {family: 'TitilliumWeb', global: 'FONT_TITILLIUM', src: 'vendor/fonts/titillium.js', css: "'Titillium Web', sans-serif"},
+              bg: null,           ink: [21,21,30],  dim: [105,105,115], head: [21,21,30],   rule: [225,6,0],
+              duty: [21,21,30],   off: [0,150,70],   layover: [130,40,200], ph: [225,6,0],    weekend: [255,128,0],  hilite: [255,214,0], hiliteInk: [21,21,30], footer: [148,148,152]},
+  // MotoGP: asphalt grey page, MotoGP red rule, factory-team blue duties, flag colours.
+  motogp:    {name: 'MotoGP',          font: {family: 'BarlowCondensed', global: 'FONT_BARLOWCOND', src: 'vendor/fonts/barlowcond.js', css: "'Barlow Condensed', sans-serif"},
+              bg: [240,240,238],  ink: [17,17,17],  dim: [100,100,100], head: [40,40,40],   rule: [215,24,42],
+              duty: [0,62,165],   off: [0,140,60],   layover: [115,35,150], ph: [215,24,42],  weekend: [235,100,0],  hilite: [255,214,0], hiliteInk: [17,17,17], footer: [140,140,140]},
 };
 const currentTheme = () => THEMES[$('themeSelect') ? $('themeSelect').value : 'default'] || THEMES.default;
 

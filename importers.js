@@ -5,7 +5,7 @@
 'use strict';
 
 /** Bump on every release: added to file URLs so browsers fetch the new version instead of a cached one. */
-const APP_VERSION = '2026.11.01-16';
+const APP_VERSION = '2026.11.01-17';
 
 /* ------------------------------------------------------------------ *
  *  PDF → array-of-arrays (same layout as the Excel Roster Report)
