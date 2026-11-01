@@ -948,6 +948,11 @@ function exportCSV(){
   $('csvBtn').onclick = exportCSV;
   $('columnsBtn').onclick = () => { $('columnsPanel').hidden = !$('columnsPanel').hidden; };
   $('addCodeBtn').onclick = () => addLegendRow();
+  $('clearSettingsBtn').onclick = () => {
+    if(!confirm('Clear all settings saved in this browser (hidden columns, code descriptions, holiday edits, time mode, page size and saved names)?')) return;
+    try{ Object.keys(localStorage).filter(k => k.startsWith('rosterConvert.')).forEach(k => localStorage.removeItem(k)); }catch(e){}
+    location.reload();
+  };
   $('addHolidayBtn').onclick = addHoliday;
   $('timeSelect').value = store.get('timeSelect', 'local');
   $('timeSelect').onchange = e => { store.set('timeSelect', e.target.value); if(S.wb && S.mode === 'roster') loadSheet('roster'); };

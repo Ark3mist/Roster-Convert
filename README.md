@@ -25,6 +25,13 @@ Upload a roster spreadsheet (`.xlsx`, `.xls`, `.csv`) and download a clean PDF. 
 - Downloaded files are named **`Name, Staff number, Month Year`**, e.g. `Shafiq Fakhri Othman, 2106537, November 2026.pdf`. Exports often cut names short, so type the full name in the title box once. It is remembered for that staff number.
 - Columns can be hidden. The code legend can be edited. Both are remembered on your device.
 
+## Privacy
+
+- The roster file is read and converted **in the browser only**. It is never uploaded, sent or stored on a server.
+- A Content-Security-Policy (`connect-src 'none'`, `form-action 'none'`, `default-src 'self'`) makes the browser block any attempt by the page to send data. All fonts and libraries are served from this site; there are no third-party requests.
+- The roster is held in memory only and cleared when the page is refreshed or closed.
+- Only settings are kept in the browser's `localStorage`: hidden columns, code descriptions, holiday edits, time mode, page size, and names typed per staff number. **Clear saved settings** on the page wipes them.
+
 ## Run it
 
 It is a static site with no build step:
@@ -46,4 +53,5 @@ Repo **Settings → Pages → Deploy from a branch**, then choose the branch and
 | `index.html` | Page layout |
 | `style.css` | Dark theme, plus light styles for printing |
 | `app.js` | Parsing, rendering, PDF/CSV export |
+| `vendor/fonts/` | DM Mono font (SIL OFL): woff2 for the page, base64 TTF for the PDF |
 | `vendor/` | SheetJS 0.18.5, jsPDF 2.5.1, jspdf-autotable 3.8.2 (bundled here so the app works offline and does not depend on a CDN) |
