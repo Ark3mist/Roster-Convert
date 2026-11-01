@@ -99,7 +99,7 @@ const DEFAULT_LEGEND = {
   DO:'Day Off', D:'Day Off', OFF:'Day Off', AL:'Annual Leave', EL:'Emergency Leave',
   MCH:'Medical Leave', MC:'Medical Leave', MC1:'Medical Leave', SL:'Sick Leave', LO:'Layover',
   OP:'Operating', DH:'Deadhead', DHD:'Deadhead', PAX:'Positioning as passenger',
-  SB:'Standby', SBY:'Standby', RES:'Reserve', TRG:'Training', SIM:'Simulator',
+  AD:'Available Day', SB:'Standby', SBY:'Standby', RES:'Reserve', TRG:'Training', SIM:'Simulator',
 };
 // Off / leave codes, with optional number suffix (DO1, MC1, AL2…).
 const isOffCode = c => /^(D|DO|OFF|RDO|AL|EL|MCH|MC|SL|LV)\d*$/i.test(String(c || '').trim());
@@ -522,18 +522,23 @@ function buildRosterModel(ws){
 
   // Model rows: every calendar day in range, first row carries the date.
   const out = [];
-  let blockMin = 0, dutyMin = 0, sectors = 0, offBase = 0, offAway = 0, workDays = 0;
+  let blockMin = 0, dutyMin = 0, sectors = 0, offBase = 0, offAway = 0, workDays = 0, availDays = 0;
   const codes = new Set();
+  const stnOf = v => { const m = /^([A-Z]{3,4})\b/.exec(String(v || '')); return m ? m[1] : ''; };
+  let lastStn = home;                      // where the crew member is: last arrival / station seen
   for(let c = new Date(minD); c <= maxD; c = addDays(c, 1)){
     const d = days[ymd(c)] || {date: c, rows: []};
-    const rs = d.rows.length ? d.rows : [{}];
+    // No code at all for the day → AD (available day) at the last station from the previous duty.
+    const rs = d.rows.length ? d.rows : [{item: 'AD', dep: lastStn, avail: true}];
+    d.rows.forEach(r => { lastStn = stnOf(r.arr) || stnOf(r.dep) || lastStn; });
     const weekend = c.getDay() === 0 || c.getDay() === 6;
-    const isDutyRow = r => !isOffCode(r.item) && r.item !== 'LO' && !!(r.item || r.start || r.dep || r.arr || r.end);
+    const isDutyRow = r => !r.avail && !isOffCode(r.item) && r.item !== 'LO' && !!(r.item || r.start || r.dep || r.arr || r.end);
     rs.forEach((r, ri) => {
       const cls = [];
       if(ri === 0) cls.push('daystart'); else cls.push('leg2');
       if(ri === 0 && isOffCode(r.item)) cls.push('off');
       else if(ri === 0 && r.item === 'LO') cls.push('layover');
+      else if(r.avail) cls.push('avail');
       else if(isDutyRow(r)) cls.push('duty');
       if(weekend) cls.push('weekend');
       if(r.earlyRpt) cls.push('earlyrpt');
@@ -550,7 +555,8 @@ function buildRosterModel(ws){
       String(r.code || '').split(/[,;\s]+/).filter(Boolean).forEach(x => codes.add(x));
     });
     const first = rs[0];
-    if(rs.length === 1 && isOffCode(first.item)){
+    if(first.avail) availDays++;
+    else if(rs.length === 1 && isOffCode(first.item)){
       const stn = (first.dep || '').split(' ')[0];
       if(stn && home && stn !== home) offAway++; else offBase++;
     } else if(rs.length === 1 && first.item === 'LO') offAway++;
@@ -575,6 +581,7 @@ function buildRosterModel(ws){
       ['Duty Days', String(workDays)],
       ['Off at Base'+(home ? ' ('+home+')' : ''), String(offBase)],
       ['Off / Layover Away', String(offAway)],
+      ['Available Days (AD)', String(availDays)],
     ],
     codes: [...codes].filter(Boolean).sort(),
   };
